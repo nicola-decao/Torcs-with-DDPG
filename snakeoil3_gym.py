@@ -173,14 +173,13 @@ class Client():
                 if n_fail < 0:
                     print("relaunch torcs")
                     os.system('pkill torcs')
-                    time.sleep(1.0)
+                    time.sleep(0.5)
                     if self.vision is False:
-                        os.system('torcs -nofuel -nodamage -nolaptime &')
+                        os.system('torcs -nofuel -nodamage -nolaptime -r ~/.torcs/config/raceman/quickrace.xml &')
                     else:
-                        os.system('torcs -nofuel -nodamage -nolaptime -vision &')
-
-                    time.sleep(1.0)
-                    os.system('sh autostart.sh')
+                        os.system('torcs -nofuel -nodamage -nolaptime &')
+                        time.sleep(0.5)
+                        os.system('sh autostart.sh')
                     n_fail = 5
                 n_fail -= 1
 

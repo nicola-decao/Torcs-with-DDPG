@@ -29,9 +29,9 @@ def playGame(train_indicator=0):    #1 means Train, 0 means simply Run
     action_dim = 3  #Steering/Acceleration/Brake
     state_dim = 29  #of sensors input
 
-    np.random.seed(1337)
+    #np.random.seed(1337)
 
-    vision = False
+    vision = True
 
     EXPLORE = 100000.
     episode_count = 2000
