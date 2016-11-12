@@ -2,10 +2,8 @@ import os
 import socket
 from xml.etree import ElementTree as etree
 import time
-
 import sys
-
-import math
+from algorithm import algorithm
 
 data_size = 2 ** 17
 
@@ -203,45 +201,14 @@ class Client:
             if sockdata:
                 return self.parse_server_string(sockdata)
 
+def train():
+    env = Environment()
+    model = algorithm.DeepDeterministicPolicyGradient()
 
-def drive_example(actions, environment):
-    target_speed = 100
+    actions = None
+    for i in range(10000000):
+        actions, sensors = env.step(actions)
+        actions = model.train_step(actions=actions, sensors=sensors)
 
-    # Steer To Corner
-    actions['steer'] = environment['angle'] * 10 / math.pi
-    # Steer To Center
-    actions['steer'] -= environment['trackPos'] * .10
-
-    # Throttle Control
-    if environment['speedX'] < target_speed - (actions['steer'] * 50):
-        actions['accel'] += .01
-    else:
-        actions['accel'] -= .01
-    if environment['speedX'] < 10:
-        actions['accel'] += 1 / (environment['speedX'] + .1)
-
-    # Traction Control System
-    if ((environment['wheelSpinVel'][2] + environment['wheelSpinVel'][3]) -
-            (environment['wheelSpinVel'][0] + environment['wheelSpinVel'][1]) > 5):
-        actions['accel'] -= .2
-
-    # Automatic Transmission
-    actions['gear'] = 1
-    if environment['speedX'] > 50:
-        actions['gear'] = 2
-    if environment['speedX'] > 80:
-        actions['gear'] = 3
-    if environment['speedX'] > 110:
-        actions['gear'] = 4
-    if environment['speedX'] > 140:
-        actions['gear'] = 5
-    if environment['speedX'] > 170:
-        actions['gear'] = 6
-    return actions
-
-
-env = Environment()
-output = None
-for i in range(10000000):
-    actions, output = env.step(output)
-    output = drive_example(actions, output)
+if __name__ == "__main__":
+    train()
