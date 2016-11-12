@@ -200,22 +200,7 @@ class Client:
                 sockdata = sockdata.decode('utf-8')
             except socket.error:
                 print('', end='')
-            if '***identified***' in sockdata:
-                print("Client connected on %d.............." % self.port)
-                continue
-            elif '***shutdown***' in sockdata:
-                print("Server has stopped the race ")
-                self.shutdown()
-                return
-            elif '***restart***' in sockdata:
-                # What do I do here?
-                print("Server has restarted the race on %d." % self.port)
-                # I haven't actually caught the server doing this.
-                self.shutdown()
-                return
-            elif not sockdata:  # Empty?
-                continue  # Try again.
-            else:
+            if sockdata:
                 return self.parse_server_string(sockdata)
 
 
