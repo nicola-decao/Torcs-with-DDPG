@@ -11,7 +11,7 @@ data_size = 2 ** 17
 
 
 class Environment:
-    def __init__(self, host='localhost', port=3001, sid='SCR', track='forza', track_type='road', gui=True):
+    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', track_type='road', gui=True):
         self.gui = gui
         self.server = self.Server(track, track_type, gui)
         self.client = self.Client(self.server, host, port, sid)
@@ -35,6 +35,10 @@ class Environment:
             print("out of track!")
             self.restart_race()
 
+    def shutdown(self):
+        self.server.shutdown()
+        self.client.shutdown()
+
     class Server:
         quickrace_xml_path = os.path.expanduser('~') + '/.torcs/config/raceman/quickrace.xml'
 
@@ -47,7 +51,7 @@ class Environment:
             self.init_server()
 
         def init_server(self):
-            os.system('pkill torcs')
+            self.shutdown()
             time.sleep(0.1)
             if self.gui is True:
                 if utils.cmd_exists('optirun'):
@@ -67,11 +71,17 @@ class Environment:
             time.sleep(0.5)
             self.init_server()
 
+        def shutdown(self):
+            os.system('pkill torcs')
+
         def create_race_xml(self):
             root = etree.parse(self.quickrace_xml_path)
             track_name = root.find('section[@name="Tracks"]/section[@name="1"]/attstr[@name="name"]')
             track_name.set('val', self.track)
             track_type = root.find('section[@name="Tracks"]/section[@name="1"]/attstr[@name="category"]')
+            track_type.set('val', self.track_type)
+            laps = root.find('section[@name="Quick Race"]/attnum[@name="laps"]')
+            laps.set('val', '1000')
             track_type.set('val', self.track_type)
             root.write(self.quickrace_xml_path)
 
@@ -94,6 +104,9 @@ class Environment:
             actions['meta'] = True
             message = self.encode_actions(actions)
             self.send_message(message)
+
+        def shutdown(self):
+            self.socket.close()
 
         def send_message(self, message):
             try:
@@ -213,7 +226,6 @@ class Environment:
 
         def get_server_input(self):
             sockdata = str()
-
             while True:
                 try:
                     sockdata, address = self.socket.recvfrom(data_size)
@@ -225,11 +237,21 @@ class Environment:
 
 
 def train(episodes, steps_per_episode):
-    env = Environment()
+    track = 'ole-road-1'
+    track_type = utils.track_list[track]
+    gui = False
+
+    print('Starting simulation...')
+    print('Track: ' + track)
+    print('Track type: ' + track_type)
+    print('GUI: ' + str(gui))
+    print()
+
+    env = Environment(track=track, track_type=track_type, gui=gui)
     model = algorithm.DeepDeterministicPolicyGradient()
 
-    actions = None
     for i in range(episodes):
+        actions = None
         print('Episode ' + str(i + 1) + '/' + str(episodes))
         for j in range(steps_per_episode):
             # utils.print_progress(j + 1, steps_per_episode)
@@ -237,7 +259,13 @@ def train(episodes, steps_per_episode):
             env.check_sensors(sensors)
             actions = model.train_step(actions=actions, sensors=sensors)
         env.restart_environment()
+        print()
+    print('Simulation finished!')
+    print()
+    model.stop()
+    env.shutdown()
+    utils.greetings()
 
 
 if __name__ == "__main__":
-    train(3, 100000)
+    train(3, 10000)

@@ -33,7 +33,11 @@ class DeepDeterministicPolicyGradient:
 
         np.savetxt(filename, np.array(r))
 
-
+    def stop(self):
+        try:
+            backend.clear_session()
+        except AttributeError:
+            pass
 
     def eval_step(self, actions, sensors):
         return None  # TODO
