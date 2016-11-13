@@ -45,8 +45,8 @@ class ReplayBuffer:
     def size(self):
         return self.__buffer_size
 
-    def add(self, state, action, reward, new_state, done):
-        experience = (state, action, reward, new_state, done)
+    def add(self, state, action, reward, new_state):
+        experience = (state, action, reward, new_state)
         if self.__index < self.__buffer_size:
             self.__buffer.append(experience)
             self.__index += 1

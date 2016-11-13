@@ -4,9 +4,72 @@ from xml.etree import ElementTree as etree
 import time
 import sys
 from algorithm import algorithm
+from keras.initializations import normal, identity
+from keras.models import model_from_json
+from keras.models import Sequential, Model
+from keras.engine.training import collect_trainable_weights
+from keras.layers import Dense, Flatten, Input, merge, Lambda
+from keras.optimizers import Adam
+import tensorflow as tf
+import keras.backend as K
 
 data_size = 2 ** 17
 
+
+def create_actor_net():
+    state = Input(shape=[29])
+    h0 = Dense(300, activation='relu')(state)
+    h1 = Dense(600, activation='relu')(h0)
+    steering = Dense(1, activation='tanh', init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)
+    acceleration = Dense(1, activation='sigmoid', init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)
+    brake = Dense(1, activation='sigmoid', init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)
+    return Model(input=state, output=merge([steering, acceleration, brake], mode='concat'))
+
+
+def create_critic_net():
+    hidden_units_1 = 300
+    hidden_units_2 = 600
+    state = Input(shape=[29])
+    action = Input(shape=[3])
+    s1 = Dense(hidden_units_1, activation='relu')(state)
+    a1 = Dense(hidden_units_2, activation='linear')(action)
+    h1 = Dense(hidden_units_2, activation='linear')(s1)
+    h2 = merge([h1, a1], mode='sum')
+    h3 = Dense(hidden_units_2, activation='relu')(h2)
+    return Model(input=[state, action], output=Dense(1, activation='linear')(h3))
+
+DDPGParams = {
+    'BUFFER_SIZE': 200,
+    'ACTOR_PARAMS': {
+        'LEARNING_RATE': 0.0001,
+        'TAU': 0.001,
+        'NET': create_actor_net
+    },
+    'CRITC_PARAMS': {
+        'LEARNING_RATE': 0.001,
+        'TAU': 0.001,
+        'NET': create_critic_net
+    },
+    'ACCELERATION_NOISE': {
+        'THETA': 1.0,
+        'MU': 0.45,
+        'SIGMA': 0.1
+    },
+    'BRAKE_NOISE': {
+        'THETA': 1.0,
+        'MU': -0.1,
+        'SIGMA': 0.05
+    },
+    'STEERING_NOISE': {
+        'THETA': 0.6,
+        'MU': 0.0,
+        'SIGMA': 0.3
+    },
+    'BROWNIAN': {
+        'DT': 0.1,
+        'DELTA': 0.25
+    }
+}
 
 class Environment:
     def __init__(self, host='localhost', port=3001, sid='SCR', track='forza', track_type='road', gui=True):
@@ -203,12 +266,12 @@ class Client:
 
 def train():
     env = Environment()
-    model = algorithm.DeepDeterministicPolicyGradient()
+    model = algorithm.DeepDeterministicPolicyGradient(DDPGParams)
 
     actions = None
     for i in range(10000000):
         actions, sensors = env.step(actions)
-        actions = model.train_step(actions=actions, sensors=sensors)
+        model.train_step(actions=actions, sensors=sensors)
 
 if __name__ == "__main__":
     train()
