@@ -1,15 +1,15 @@
 import tensorflow as tf
 
-from algorithm.neural_network import ModelTargetNeuralNetwork
+from algorithm.model_target_neural_network import ModelTargetNeuralNetwork
 
 
 class Actor(ModelTargetNeuralNetwork):
     def __init__(self, session, params):
         super().__init__(params)
 
-        self.__action_gradient = tf.placeholder(tf.float32, [None, 3])
+        self.__action_gradient = tf.placeholder(tf.float32, [None, params.OUTPUT_SIZE])
         self.__gradient = tf.gradients(self._model.output, self._model.trainable_weights, -self.__action_gradient)
-        self.__optimize = tf.train.AdamOptimizer(params['LEARNING_RATE']).apply_gradients(
+        self.__optimize = tf.train.AdamOptimizer(params.LEARNING_RATE).apply_gradients(
             zip(self.__gradient, self._model.trainable_weights))
         self.__session = session
 

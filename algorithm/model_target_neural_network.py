@@ -3,9 +3,9 @@ import numpy as np
 
 class ModelTargetNeuralNetwork:
     def __init__(self, params):
-        self._model = params['NET']()
-        self._target = params['NET']()
-        self.__tau = params['TAU']
+        self._model = params.NET()
+        self._target = params.NET()
+        self.__tau = params.TAU
 
     def init_target_weights(self):
         self._target.set_weights(self._model.get_weights())
