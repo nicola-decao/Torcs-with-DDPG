@@ -6,6 +6,7 @@ from xml.etree import ElementTree as etree
 
 import utils
 from algorithm import algorithm
+from dataset.dataset_generator import DatasetGenerator
 
 data_size = 2 ** 17
 
@@ -33,7 +34,8 @@ class Environment:
     def check_sensors(self, sensors):
         if abs(sensors['trackPos']) > 1:
             print("out of track!")
-            self.restart_race()
+            return 1
+        return 0
 
     def shutdown(self):
         self.server.shutdown()
@@ -256,7 +258,8 @@ def train(episodes, steps_per_episode):
         for j in range(steps_per_episode):
             # utils.print_progress(j + 1, steps_per_episode)
             actions, sensors = env.step(actions)
-            env.check_sensors(sensors)
+            if env.check_sensors(sensors) == 1:
+                env.restart_race()
             actions = model.train_step(actions=actions, sensors=sensors)
         env.restart_environment()
         print()
@@ -267,5 +270,63 @@ def train(episodes, steps_per_episode):
     utils.greetings()
 
 
+def generate_training_dataset():
+    non_valid_runs = 0
+    non_valid_tracks = []
+    print('Starting datasets generation')
+
+    for key in utils.track_list.keys():
+        track = key
+        track_type = utils.track_list[track]
+        gui = False
+
+        print('Track: ' + track)
+        print('Track type: ' + track_type)
+
+        env = Environment(track=track, track_type=track_type, gui=gui)
+        model = DatasetGenerator(track)
+
+        actions = None
+
+        last_distance = -1
+        lap = -1
+        laps = 3
+        out_of_track = False
+        while True:
+            actions, sensors = env.step(actions)
+            lap, last_distance = check_if_lap(lap, last_distance, sensors['distFromStart'])
+            if lap == laps:
+                break
+            if env.check_sensors(sensors) == 1:
+                out_of_track = True
+                non_valid_runs += 1
+                non_valid_tracks.append(track)
+                print('Out of track! Not saved')
+                break
+            actions = model.get_output(actions=actions, sensors=sensors)
+            model.add_observation(actions, sensors)
+
+        if not out_of_track:
+            model.write_dataset()
+        env.shutdown()
+        print('end')
+        print()
+
+    print(
+        'The network failed to complete ' + str(non_valid_runs) + ' tracks out of ' + str(len(utils.track_list.keys())))
+    print('The failed tracks are:')
+    for track in non_valid_tracks:
+        print(track)
+
+
+def check_if_lap(lap, last_distance, current_distance):
+    if last_distance == -1:
+        return lap, current_distance
+    if last_distance > current_distance:
+        return lap + 1, current_distance
+    return lap, current_distance
+
+
 if __name__ == "__main__":
-    train(3, 10000)
+    # train(3, 10000)
+    generate_training_dataset()

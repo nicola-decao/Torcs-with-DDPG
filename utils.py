@@ -1,6 +1,7 @@
 import subprocess
-
 import sys
+
+import numpy as np
 
 
 def cmd_exists(cmd):
@@ -70,3 +71,15 @@ def greetings():
     print('nicola-decao')
     print()
     print('And remember, drive safe!')
+
+
+def encode_np_dict(dictionary):
+    encoded = {}
+    for key in dictionary.keys():
+        if dictionary[key] is list:
+            encoded[key] = dictionary[key].tolist()
+        elif type(dictionary[key]) == np.float64 or type(dictionary[key]) == np.float32:
+            encoded[key] = float(dictionary[key])
+        else:
+            encoded[key] = dictionary[key]
+    return encoded
