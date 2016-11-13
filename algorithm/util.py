@@ -7,7 +7,8 @@ from scipy.stats import norm
 
 class OriginalRandom:
 
-    def sample(self):
+    @staticmethod
+    def sample():
         return np.random.randn(1)
 
 
