@@ -2,10 +2,11 @@ import numpy as np
 
 
 class ModelTargetNeuralNetwork:
-    def __init__(self, params):
+    def __init__(self, session, params):
         self._model = params.NET()
         self._target = params.NET()
         self.__tau = params.TAU
+        self._session = session
 
     def init_target_weights(self):
         self._target.set_weights(self._model.get_weights())

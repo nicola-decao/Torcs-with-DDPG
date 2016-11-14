@@ -1,8 +1,31 @@
+import numpy as np
+
 from keras.initializations import normal
 from keras.layers import Dense, Input, merge
 from keras.models import Model
 
 from utilities.distributions import OrnstainUhlenbeck, BrownianMotion
+
+
+class DataHandler:
+    @staticmethod
+    def encode_state_data(sensors):
+        state = np.zeros(29)
+        state[0] = sensors['angle'] / 3.1416  # TODO
+        state[1:20] = np.array(sensors['track']) / 200.0
+        state[20] = sensors['trackPos']
+        state[21] = sensors['speedX'] / 300.0
+        state[22] = sensors['speedY'] / 300.0
+        state[23] = sensors['speedZ'] / 300.0
+        state[24:28] = np.array(sensors['wheelSpinVel']) / 100.0
+        state[28] = sensors['rpm'] / 10000.0
+        return np.reshape(state, (1, 29))
+
+    @staticmethod
+    def decode_action_data(actions_dic, actions_vec):
+        actions_dic['steer'] = actions_vec[0, 0]
+        actions_dic['accel'] = actions_vec[0, 1]
+        actions_dic['brake'] = actions_vec[0, 2]
 
 
 class NetorksStructure:
@@ -42,9 +65,9 @@ class ExplorativeNoise:
         self.__samples = 0
 
     def add_noise(self, action):
-        action[0] += self.__magnitude * self.__steering_noise.sample(action[0])
-        action[1] += self.__magnitude * self.__acceleration_noise.sample(action[1])
-        action[2] += self.__magnitude * self.__brake_noise.sample(action[2])
+        action[0, 0] += self.__magnitude * self.__steering_noise.sample(action[0, 0])
+        action[0, 1] += self.__magnitude * self.__acceleration_noise.sample(action[0, 1])
+        action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
 
         # noise magnitude decay
         self.__samples += 1
@@ -54,20 +77,21 @@ class ExplorativeNoise:
 
 
 class ModelTargetNeuralNetworkParams:
-    def __init__(self, learning_rate, tau, net, output_size=None):
+    def __init__(self, learning_rate, tau, net):
         self.LEARNING_RATE = learning_rate
         self.TAU = tau
         self.NET = net
-        self.OUTPUT_SIZE = output_size
 
 
 class DDPGParams:
     def __init__(self):
         self.__explorative_noise = ExplorativeNoise()
 
-        self.BUFFER_SIZE = 200
+        self.BUFFER_SIZE = 10000
+        self.BATCH_SIZE = 32
+        self.GAMMA = 0.99
         self.ACTOR_PARAMS = ModelTargetNeuralNetworkParams(learning_rate=0.0001, tau=0.001,
-                                                           net=NetorksStructure.create_actor_net, output_size=3)
+                                                           net=NetorksStructure.create_actor_net)
         self.CRITIC_PARAMS = ModelTargetNeuralNetworkParams(learning_rate=0.001, tau=0.001,
                                                             net=NetorksStructure.create_critic_net)
         self.NOISE_FUNCTION = self.__explorative_noise.add_noise
@@ -75,4 +99,4 @@ class DDPGParams:
 
     @staticmethod
     def __reward(state):
-        return 0  # TODO implement a rewoard function
+        return 0

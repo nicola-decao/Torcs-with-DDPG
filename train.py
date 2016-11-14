@@ -1,7 +1,6 @@
 from algorithm import algorithm
 from environment import Environment
-from parameters import DDPGParams
-from utilities.data_handler import encode_state_data, decode_action_data
+from parameters import DDPGParams, DataHandler
 from utilities.tracks_utils import track_list, greetings
 
 
@@ -27,13 +26,13 @@ def train(episodes, steps_per_episode, gui=True):
             if env.check_sensors(sensors) == 1:
                 env.restart_race()
             # Encoding of the sensor into a vector
-            state_vec = encode_state_data(sensors)
+            state_vec = DataHandler.encode_state_data(sensors)
 
             # Evaluating the corresponding action
             action_vec = model.train_step(state_vec)
 
             # Decoding the data from prediction vector
-            decode_action_data(action, action_vec)
+            DataHandler.decode_action_data(action, action_vec)
 
         env.restart_environment()
         print()
@@ -44,4 +43,4 @@ def train(episodes, steps_per_episode, gui=True):
     greetings()
 
 if __name__ == "__main__":
-    train(3, 10000)
+    train(3, 10000, gui=False)
