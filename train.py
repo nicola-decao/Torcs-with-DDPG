@@ -43,4 +43,4 @@ def train(episodes, steps_per_episode, gui=True):
     greetings()
 
 if __name__ == "__main__":
-    train(3, 10000, gui=False)
+    train(3, 10000, gui=True)

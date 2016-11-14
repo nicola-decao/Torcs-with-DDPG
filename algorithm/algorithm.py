@@ -63,9 +63,6 @@ class DeepDeterministicPolicyGradient:
         # Adding explorative noise to the prediction
         action = self.__add_noise(action)
 
-        print('lol')
-        print(self.__buffer)
-
         if self.__last_action.any() and self.__last_state.any():
             # Compute reward
             reward = self.__reward(state)
@@ -92,9 +89,7 @@ class DeepDeterministicPolicyGradient:
             y = np.array(y)
 
             self.__critic.train_on_batch(states, actions, y)
-            cc = self.__actor.predict(states)
-            print(cc)
-            grads = self.__critic.gradients(states,  cc)
+            grads = self.__critic.gradients(states,  self.__actor.predict(states))
             self.__actor.train(states, grads)
             self.__actor.update_target()
             self.__critic.update_target()

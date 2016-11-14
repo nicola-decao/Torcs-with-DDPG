@@ -15,16 +15,18 @@ class Actor(ModelTargetNeuralNetwork):
             zip(self.__gradient, self._model.trainable_weights))
 
     def train(self, states, action_gradient):
+        action_gradient = action_gradient
         self._session.run(self.__optimize, feed_dict={
             self._model.input: states,
             self.__action_gradient: action_gradient
         })
 
     def predict(self, state):
-        return np.reshape(self._model.predict(state)[0], (1, 3))
+        result = self._model.predict(state)
+        return np.reshape(result, (state.shape[0], 3))
 
     def target_predict(self, state):
-        return np.reshape(self._target.predict(state)[0], (1, 3))
+        return np.reshape(self._target.predict(state), (state.shape[0], 3))
 
 
 class Critic(ModelTargetNeuralNetwork):
