@@ -3,10 +3,7 @@ import socket
 import sys
 import time
 from xml.etree import ElementTree as etree
-
-import utils
-from algorithm import algorithm
-from dataset.dataset_generator import DatasetGenerator
+from utilities.tracks_utils import cmd_exists, get_empty_actions, track_list
 
 data_size = 2 ** 17
 
@@ -56,7 +53,7 @@ class Environment:
             self.shutdown()
             time.sleep(0.1)
             if self.gui is True:
-                if utils.cmd_exists('optirun'):
+                if cmd_exists('optirun'):
                     os.system('optirun torcs -nofuel -nodamage -nolaptime &')
                 else:
                     os.system('torcs -nofuel -nodamage -nolaptime &')
@@ -102,7 +99,7 @@ class Environment:
             self.connect_to_server()
 
         def send_restart_request(self):
-            actions = utils.get_empty_actions()
+            actions = get_empty_actions()
             actions['meta'] = True
             message = self.encode_actions(actions)
             self.send_message(message)
@@ -191,7 +188,7 @@ class Environment:
 
         def step(self, actions):
             if actions is None:
-                actions = utils.get_empty_actions()
+                actions = get_empty_actions()
 
             if not self.socket:
                 print('Client socket problem!')
@@ -238,95 +235,9 @@ class Environment:
                     return self.parse_server_string(sockdata)
 
 
-def train(episodes, steps_per_episode):
-    track = 'ole-road-1'
-    track_type = utils.track_list[track]
-    gui = False
-
-    print('Starting simulation...')
-    print('Track: ' + track)
-    print('Track type: ' + track_type)
-    print('GUI: ' + str(gui))
-    print()
-
-    env = Environment(track=track, track_type=track_type, gui=gui)
-    model = algorithm.DeepDeterministicPolicyGradient()
-
-    for i in range(episodes):
-        actions = None
-        print('Episode ' + str(i + 1) + '/' + str(episodes))
-        for j in range(steps_per_episode):
-            # utils.print_progress(j + 1, steps_per_episode)
-            actions, sensors = env.step(actions)
-            if env.check_sensors(sensors) == 1:
-                env.restart_race()
-            actions = model.train_step(actions=actions, sensors=sensors)
-        env.restart_environment()
-        print()
-    print('Simulation finished!')
-    print()
-    model.stop()
-    env.shutdown()
-    utils.greetings()
 
 
-def generate_training_dataset():
-    non_valid_runs = 0
-    non_valid_tracks = []
-    print('Starting datasets generation')
-
-    for key in utils.track_list.keys():
-        track = key
-        track_type = utils.track_list[track]
-        gui = False
-
-        print('Track: ' + track)
-        print('Track type: ' + track_type)
-
-        env = Environment(track=track, track_type=track_type, gui=gui)
-        model = DatasetGenerator(track)
-
-        actions = None
-
-        last_distance = -1
-        lap = -1
-        laps = 3
-        out_of_track = False
-        while True:
-            actions, sensors = env.step(actions)
-            lap, last_distance = check_if_lap(lap, last_distance, sensors['distFromStart'])
-            if lap == laps:
-                break
-            if env.check_sensors(sensors) == 1:
-                out_of_track = True
-                non_valid_runs += 1
-                non_valid_tracks.append(track)
-                print('Out of track! Not saved')
-                break
-            actions = model.get_output(actions=actions, sensors=sensors)
-            model.add_observation(actions, sensors)
-
-        if not out_of_track:
-            model.write_dataset()
-        env.shutdown()
-        print('end')
-        print()
-
-    print(
-        'The network failed to complete ' + str(non_valid_runs) + ' tracks out of ' + str(len(utils.track_list.keys())))
-    print('The failed tracks are:')
-    for track in non_valid_tracks:
-        print(track)
 
 
-def check_if_lap(lap, last_distance, current_distance):
-    if last_distance == -1:
-        return lap, current_distance
-    if last_distance > current_distance:
-        return lap + 1, current_distance
-    return lap, current_distance
 
 
-if __name__ == "__main__":
-    # train(3, 10000)
-    generate_training_dataset()

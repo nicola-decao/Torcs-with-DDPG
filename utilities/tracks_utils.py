@@ -20,7 +20,7 @@ def print_progress(i, total):
 
 
 def get_empty_actions():
-    return {'steer': 0, 'accel': 0, 'gear': 0, 'brake': 0, 'clutch': 0, 'meta': 0,
+    return {'steer': 0, 'accel': 0, 'gear': 1, 'brake': 0, 'clutch': 0, 'meta': 0,
             'focus': [-90, -45, 0, 45, 90]}
 
 
