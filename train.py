@@ -21,9 +21,11 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
     if load:
         model.load_models('actor.h5', 'critic.h5')
 
-    time.sleep(3)
+    time.sleep(6)
     env = Environment(track=track, track_type=track_type, gui=gui)
     distFromStart = []
+
+    c=0
 
     for i in range(episodes):
         action = None
@@ -38,7 +40,7 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
             if env.check_sensors(sensors):
                 # print("out of track!")
                 distFromStart.append(sensors['distFromStart'])
-                env.restart_race()
+                break
 
             # Encoding of the sensor into a vector
             state_vec = DataHandler.encode_state_data(sensors)
@@ -49,15 +51,20 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
             # Decoding the data from prediction vector
             DataHandler.decode_action_data(action, action_vec)
 
-            if j % 5000 == 0 and save:
+
+        if c%10==0:
+            c=1
+            if save:
                 print('saving models..')
                 model.save_models('actor.h5', 'critic.h5')
                 print('saved!')
-                print('distFromStart mean: ', np.mean(distFromStart))
-
-        print()
+            env.restart_environment()
+        print('distFromStart mean: ', np.mean(distFromStart))
         print("Episode last {}".format(time.time()-start))
-        env.restart_environment()
+        print()
+        c+=1
+        env.restart_race()
+        #env.restart_environment()
 
     print('Simulation finished!')
     print()
@@ -67,4 +74,4 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
     greetings()
 
 if __name__ == "__main__":
-    train(300, 100000, gui=False, load=True, save=True)
+    train(3000000, 10000, gui=False, load=False, save=True)
