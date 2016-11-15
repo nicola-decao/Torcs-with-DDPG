@@ -1,6 +1,10 @@
+from time import sleep
+
 import numpy as np
 import tensorflow as tf
-from keras import backend
+from keras import backend as K1
+from keras import backend as K2
+import threading
 
 from algorithm.actor_critic import Actor, Critic
 from utilities.buffer import ReplayBuffer
@@ -11,15 +15,19 @@ class DeepDeterministicPolicyGradient:
         # tensorflow and keras setup
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        self.__session = tf.Session(config=config)
-        backend.set_session(self.__session)
 
-        # create actor and critic
-        self.__actor = Actor(self.__session, params.ACTOR_PARAMS)
-        self.__critic = Critic(self.__session, params.CRITIC_PARAMS)
-        self.__session.run(tf.initialize_all_variables())
-        self.__actor.init_target_weights()
+        # create critic
+        self.__critic_session = tf.Session(config=config)
+        K1.set_session(self.__critic_session)
+        self.__critic = Critic(self.__critic_session, params.CRITIC_PARAMS)
         self.__critic.init_target_weights()
+
+        # create actor
+        self.__actor_session = tf.Session(config=config)
+        K2.set_session(self.__actor_session)
+        self.__actor = Actor(self.__actor_session, params.ACTOR_PARAMS)
+        self.__actor_session.run(tf.initialize_all_variables())
+        self.__actor.init_target_weights()
 
         # set the reward function
         self.__reward = params.REWARD_FUNCTION
@@ -37,6 +45,11 @@ class DeepDeterministicPolicyGradient:
 
         # init gamma
         self.__gamma = params.GAMMA
+
+        self.__train_networks = True
+        self.__training_thread = threading.Thread(target=self.__train)
+        self.__training_thread.daemon = True
+        self.__training_thread.start()
 
     def load_models(self, f_actor, f_critic):
         self.__actor.load(f_actor)
@@ -56,9 +69,34 @@ class DeepDeterministicPolicyGradient:
     def eval_step(self, state):
         return self.__actor.predict(state)
 
+    def __train(self):
+        while self.__train_networks:
+            if not self.__buffer.is_empty():
+
+                # Sample batch from buffer
+                states, actions, y, new_states, = self.__buffer.get_batch(self.__batch_size)
+
+                with self.__actor_session.graph.as_default():
+                    a = self.__actor.target_predict(new_states)
+
+                with self.__critic_session.graph.as_default():
+                    y += self.__gamma * self.__critic.target_predict(new_states, a)
+
+                    self.__critic.train_on_batch(states, actions, y)
+                    self.__critic.update_target()
+
+                with self.__actor_session.graph.as_default():
+                    self.__actor.train(states, self.__critic.gradients(states, self.__actor.predict(states)))
+                    self.__actor.update_target()
+
+            else:
+                sleep(0.1)
+
     def train_step(self, state):
         # Predict the action using the actor network
-        action = self.__actor.predict(state)
+        with self.__actor_session.graph.as_default():
+            action = self.__actor.predict(state)
+            # print(action)
 
         # Adding explorative noise to the prediction
         action = self.__add_noise(action)
@@ -69,16 +107,6 @@ class DeepDeterministicPolicyGradient:
 
             # Update replay buffer
             self.__buffer.add(state=self.__last_state, action=self.__last_action, reward=reward, new_state=state)
-
-            # Sample batch from buffer
-            states, actions, y, new_states,  = self.__buffer.get_batch(self.__batch_size)
-
-            y += self.__gamma * self.__critic.target_predict(new_states, self.__actor.target_predict(new_states))
-
-            self.__critic.train_on_batch(states, actions, y)
-            self.__actor.train(states, self.__critic.gradients(states,  self.__actor.predict(states)))
-            self.__actor.update_target()
-            self.__critic.update_target()
 
         self.__last_state = state
         self.__last_action = action

@@ -1,6 +1,6 @@
 import tensorflow as tf
-import numpy as np
 from keras.optimizers import Adam
+import threading
 
 from algorithm.model_target_neural_network import ModelTargetNeuralNetwork
 
@@ -13,17 +13,24 @@ class Actor(ModelTargetNeuralNetwork):
         self.__gradient = tf.gradients(self._model.output, self._model.trainable_weights, -self.__action_gradient)
         self.__optimize = tf.train.AdamOptimizer(params.LEARNING_RATE).apply_gradients(
             zip(self.__gradient, self._model.trainable_weights))
+        self.__mutex = threading.Semaphore()
+
 
     def train(self, states, action_gradient):
         action_gradient = action_gradient
+        self.__mutex.acquire()
         self._session.run(self.__optimize, feed_dict={
             self._model.input: states,
             self.__action_gradient: action_gradient
         })
+        self.__mutex.release()
 
     def predict(self, state):
         # return np.reshape(self._model.predict(state), (state.shape[0], self._model.output[0].get_shape()[0]))
-        return self._model.predict(state)
+        self.__mutex.acquire()
+        result = self._model.predict(state)
+        self.__mutex.release()
+        return result
 
     def target_predict(self, state):
         # return np.reshape(self._target.predict(state), (state.shape[0], self._model.output[0].get_shape()[0]))

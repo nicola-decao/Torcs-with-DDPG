@@ -1,3 +1,5 @@
+import time
+
 from algorithm import algorithm
 from environment import Environment
 from parameters import DDPGParams, DataHandler
@@ -14,16 +16,18 @@ def train(episodes, steps_per_episode, gui=True):
     print('GUI: ' + str(gui))
     print()
 
-    env = Environment(track=track, track_type=track_type, gui=gui)
     model = algorithm.DeepDeterministicPolicyGradient(DDPGParams())
+    time.sleep(3)
+    env = Environment(track=track, track_type=track_type, gui=gui)
+
 
     for i in range(episodes):
         action = None
+        start = time.time()
         print('Episode ' + str(i + 1) + '/' + str(episodes))
         for j in range(steps_per_episode):
             # utils.print_progress(j + 1, steps_per_episode)
             action, sensors = env.step(action)
-            
             if env.check_sensors(sensors):
                 print("out of track!")
                 env.restart_race()
@@ -39,6 +43,7 @@ def train(episodes, steps_per_episode, gui=True):
 
         env.restart_environment()
         print()
+    print("Episode last {}".format(time.time()-start))
     print('Simulation finished!')
     print()
     model.stop()
@@ -46,4 +51,4 @@ def train(episodes, steps_per_episode, gui=True):
     greetings()
 
 if __name__ == "__main__":
-    train(3, 10000, gui=True)
+    train(3, 10000, gui=False)

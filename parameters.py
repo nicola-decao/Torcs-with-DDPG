@@ -3,6 +3,7 @@ import numpy as np
 from keras.initializations import normal
 from keras.layers import Dense, Input, merge
 from keras.models import Model
+import math
 
 from utilities.distributions import OrnstainUhlenbeck, BrownianMotion
 
@@ -71,7 +72,7 @@ class ExplorativeNoise:
 
         # noise magnitude decay
         self.__samples += 1
-        self.__magnitude -= 1.0 / 100000 # TODO log didn't work: decrease too quickly
+        self.__magnitude = max(0, self.__magnitude-0.0000001)
         return action
 
 
@@ -97,7 +98,17 @@ class DDPGParams:
                                                             net=NetorksStructure.create_critic_net)
         self.NOISE_FUNCTION = self.__explorative_noise.add_noise
         self.REWARD_FUNCTION = self.__reward
+        self.c = 0
+        self.totReward = 0
 
-    @staticmethod
-    def __reward(state):
-        return 0
+    def __reward(self,state):
+        reward = 3*state[0][21] - math.fabs(state[0, 20])
+        if math.fabs(state[0, 20]) > 0.9:
+            reward = -200
+        self.c += 1
+        self.totReward += reward
+        if self.c >=100:
+            print("tot Reward:{}".format(self.totReward))
+            self.totReward = 0
+            self.c=0
+        return reward

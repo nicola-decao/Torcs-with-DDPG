@@ -1,3 +1,5 @@
+import threading
+
 import numpy as np
 
 
@@ -11,6 +13,7 @@ class ReplayBuffer:
         self.__full = False
         self.__buffer_size = buffer_size
         self.__buffer = np.empty((buffer_size, 2 * dim_state + dim_action + 1))
+        self.__mutex = threading.Semaphore()
 
     def get_batch(self, batch_size):
         if self.__full:
@@ -20,12 +23,17 @@ class ReplayBuffer:
         else:
             rnd = np.random.choice(self.__index, self.__index, replace=False)
 
-        return self.__buffer[rnd, 0:self.__dim_state], \
+        self.__mutex.acquire()
+        result = self.__buffer[rnd, 0:self.__dim_state], \
                self.__buffer[rnd, self.__dim_state:self.__dim_action], \
                self.__buffer[rnd, self.__dim_action:self.__dim_reward], \
                self.__buffer[rnd, self.__dim_reward:self.__dim_new_state]
+        self.__mutex.release()
+
+        return result
 
     def add(self, state, action, reward, new_state):
+        self.__mutex.acquire()
         self.__buffer[self.__index, 0:self.__dim_state] = state
         self.__buffer[self.__index, self.__dim_state:self.__dim_action] = action
         self.__buffer[self.__index, self.__dim_action:self.__dim_reward] = reward
@@ -36,9 +44,20 @@ class ReplayBuffer:
         else:
             self.__full = True
             self.__index = 0
+        self.__mutex.release()
 
     def count(self):
-        return self.__buffer_size if self.__full else self.__index
+        self.__mutex.acquire()
+        result = self.__buffer_size if self.__full else self.__index
+        self.__mutex.release()
+        return result
 
     def is_empty(self):
-        return self.__index == 0 or self.__full
+        self.__mutex.acquire()
+        result = self.__index == 0 and not self.__full
+        self.__mutex.release()
+        return result
+
+
+
+
