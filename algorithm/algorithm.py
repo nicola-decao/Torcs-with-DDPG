@@ -20,6 +20,7 @@ class DeepDeterministicPolicyGradient:
         self.__critic_session = tf.Session(config=config)
         K1.set_session(self.__critic_session)
         self.__critic = Critic(self.__critic_session, params.CRITIC_PARAMS)
+        self.__critic_session.run(tf.initialize_all_variables())
         self.__critic.init_target_weights()
 
         # create actor
@@ -69,6 +70,10 @@ class DeepDeterministicPolicyGradient:
     def eval_step(self, state):
         return self.__actor.predict(state)
 
+    def stop(self):
+        self.__train_networks = False
+        sleep(1)
+
     def __train(self):
         while self.__train_networks:
             if not self.__buffer.is_empty():
@@ -96,7 +101,6 @@ class DeepDeterministicPolicyGradient:
         # Predict the action using the actor network
         with self.__actor_session.graph.as_default():
             action = self.__actor.predict(state)
-            # print(action)
 
         # Adding explorative noise to the prediction
         action = self.__add_noise(action)

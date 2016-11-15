@@ -65,7 +65,7 @@ class Environment:
         def restart(self):
             print('Restarting server...')
             os.system('pkill torcs')
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.init_server()
 
         def shutdown(self):
