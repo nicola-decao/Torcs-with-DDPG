@@ -26,7 +26,7 @@ class DeepDeterministicPolicyGradient:
 
         # init replay buffer
         self.__batch_size = params.BATCH_SIZE
-        self.__buffer = ReplayBuffer(params.BUFFER_SIZE)
+        self.__buffer = ReplayBuffer(params.BUFFER_SIZE, params.STATE_SIZE, params.ACTION_SIZE)
 
         # init noise for action exploration
         self.__add_noise = params.NOISE_FUNCTION
@@ -71,29 +71,16 @@ class DeepDeterministicPolicyGradient:
             self.__buffer.add(state=self.__last_state, action=self.__last_action, reward=reward, new_state=state)
 
             # Sample batch from buffer
-            minibacth = self.__buffer.get_batch(self.__batch_size)
+            states, actions, y, new_states,  = self.__buffer.get_batch(self.__batch_size)
 
-
-            states = []
-            actions = []
-            y = []
-
-            for s, a, r, ns in minibacth:
-                # TODO check final state
-                states.append(s[0])
-                actions.append(a[0])
-                y.append(r + self.__gamma*self.__critic.target_predict(ns, self.__actor.target_predict(ns)))
-
-            states = np.array(states)
-            actions = np.array(actions)
-            y = np.array(y)
+            y += self.__gamma * self.__critic.target_predict(new_states, self.__actor.target_predict(new_states))
 
             self.__critic.train_on_batch(states, actions, y)
-            grads = self.__critic.gradients(states,  self.__actor.predict(states))
-            self.__actor.train(states, grads)
+            self.__actor.train(states, self.__critic.gradients(states,  self.__actor.predict(states)))
             self.__actor.update_target()
             self.__critic.update_target()
 
         self.__last_state = state
         self.__last_action = action
+        print(action)
         return action

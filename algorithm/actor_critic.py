@@ -23,10 +23,10 @@ class Actor(ModelTargetNeuralNetwork):
 
     def predict(self, state):
         result = self._model.predict(state)
-        return np.reshape(result, (state.shape[0], 3))
+        return np.reshape(result, (state.shape[0], self._model.output[0].get_shape()[0]))
 
     def target_predict(self, state):
-        return np.reshape(self._target.predict(state), (state.shape[0], 3))
+        return np.reshape(self._target.predict(state), (state.shape[0], self._model.output[0].get_shape()[0]))
 
 
 class Critic(ModelTargetNeuralNetwork):

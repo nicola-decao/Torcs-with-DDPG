@@ -10,16 +10,16 @@ from utilities.distributions import OrnstainUhlenbeck, BrownianMotion
 class DataHandler:
     @staticmethod
     def encode_state_data(sensors):
-        state = np.zeros(29)
-        state[0] = sensors['angle'] / 3.1416  # TODO
-        state[1:20] = np.array(sensors['track']) / 200.0
-        state[20] = sensors['trackPos']
-        state[21] = sensors['speedX'] / 300.0
-        state[22] = sensors['speedY'] / 300.0
-        state[23] = sensors['speedZ'] / 300.0
-        state[24:28] = np.array(sensors['wheelSpinVel']) / 100.0
-        state[28] = sensors['rpm'] / 10000.0
-        return np.reshape(state, (1, 29))
+        state = np.empty((1, 29))
+        state[0, 0] = sensors['angle'] / np.pi
+        state[0, 1:20] = np.array(sensors['track']) / 200.0
+        state[0, 20] = sensors['trackPos']
+        state[0, 21] = sensors['speedX'] / 300.0
+        state[0, 22] = sensors['speedY'] / 300.0
+        state[0, 23] = sensors['speedZ'] / 300.0
+        state[0, 24:28] = np.array(sensors['wheelSpinVel']) / 100.0
+        state[0, 28] = sensors['rpm'] / 10000.0
+        return state
 
     @staticmethod
     def decode_action_data(actions_dic, actions_vec):
@@ -71,8 +71,7 @@ class ExplorativeNoise:
 
         # noise magnitude decay
         self.__samples += 1
-        self.__magnitude = 1.0  # TODO implement a decay like 1/ math.log(self.__samples + 1)
-
+        self.__magnitude -= 1.0 / 100000 # TODO log didn't work: decrease too quickly
         return action
 
 
@@ -89,6 +88,8 @@ class DDPGParams:
 
         self.BUFFER_SIZE = 10000
         self.BATCH_SIZE = 32
+        self.STATE_SIZE = 29
+        self.ACTION_SIZE = 3
         self.GAMMA = 0.99
         self.ACTOR_PARAMS = ModelTargetNeuralNetworkParams(learning_rate=0.0001, tau=0.001,
                                                            net=NetorksStructure.create_actor_net)

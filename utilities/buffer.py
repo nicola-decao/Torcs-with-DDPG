@@ -1,32 +1,35 @@
-import random
+import numpy as np
 from collections import deque
 
 
 class ReplayBuffer:
-    def __init__(self, buffer_size):
-        self.__buffer_size, self.__index, self.__buffer = buffer_size, 0, deque()
+    def __init__(self, buffer_size, dim_state, dim_action):
+        self.__dim_state = dim_state
+        self.__dim_action = self.__dim_state + dim_action
+        self.__dim_reward = self.__dim_action + 1
+        self.__dim_new_state = self.__dim_reward + dim_state
+        self.__index = 0
+        self.__full = False
+        self.__buffer_size = buffer_size
+        self.__buffer = np.empty((buffer_size, 2 * dim_state + dim_action + 1))
 
     def get_batch(self, batch_size):
-        if self.__index < batch_size:
-            return random.sample(self.__buffer, self.__index)
-        else:
-            return random.sample(self.__buffer, batch_size)
-
-    def size(self):
-        return self.__buffer_size
+        rnd = np.random.choice(self.__index if not self.__full else self.__buffer_size,
+                               self.__index if not self.__full and self.__index < batch_size else batch_size,
+                               replace=False)
+        return self.__buffer[rnd, 0:self.__dim_state], \
+               self.__buffer[rnd, self.__dim_state:self.__dim_action], \
+               self.__buffer[rnd, self.__dim_action:self.__dim_reward], \
+               self.__buffer[rnd, self.__dim_reward:self.__dim_new_state]
 
     def add(self, state, action, reward, new_state):
-        experience = (state, action, reward, new_state)
+        self.__buffer[self.__index, 0:self.__dim_state] = state
+        self.__buffer[self.__index, self.__dim_state:self.__dim_action] = action
+        self.__buffer[self.__index, self.__dim_action:self.__dim_reward] = reward
+        self.__buffer[self.__index, self.__dim_reward:self.__dim_new_state] = new_state
+
         if self.__index < self.__buffer_size:
-            self.__buffer.append(experience)
             self.__index += 1
         else:
-            self.__buffer.popleft()
-            self.__buffer.append(experience)
-
-    def count(self):
-        return self.__index
-
-    def erase(self):
-        self.__buffer = deque()
-        self.__index = 0
+            self.__full = True
+            self.__index = 0
