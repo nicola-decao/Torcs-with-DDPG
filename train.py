@@ -1,5 +1,5 @@
 import time
-
+import numpy as np
 from algorithm import algorithm
 from environment import Environment
 from parameters import DDPGParams, DataHandler
@@ -52,8 +52,9 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
             if j % 5000 == 0 and save:
                 print('saving models..')
                 model.save_models('actor.h5', 'critic.h5')
+                print('saved!')
+                print('distFromStart mean: ', np.mean(distFromStart))
 
-        print(distFromStart)
         print()
         print("Episode last {}".format(time.time()-start))
         env.restart_environment()
@@ -66,4 +67,4 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
     greetings()
 
 if __name__ == "__main__":
-    train(300, 100000, gui=False, load=False, save=True)
+    train(300, 100000, gui=False, load=True, save=True)

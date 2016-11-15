@@ -94,7 +94,7 @@ class ModelTargetNeuralNetworkParams:
 
 class DDPGParams:
     def __init__(self):
-        self.STOCHASTIC_BRAKE = True
+        self.STOCHASTIC_BRAKE = False
         self.__explorative_noise = ExplorativeNoise(stochastic_brake=self.STOCHASTIC_BRAKE)
 
         self.BUFFER_SIZE = 100000
