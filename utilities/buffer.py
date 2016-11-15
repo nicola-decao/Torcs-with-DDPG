@@ -31,8 +31,14 @@ class ReplayBuffer:
         self.__buffer[self.__index, self.__dim_action:self.__dim_reward] = reward
         self.__buffer[self.__index, self.__dim_reward:self.__dim_new_state] = new_state
 
-        if self.__index < self.__buffer_size:
+        if self.__index < self.__buffer_size - 1:
             self.__index += 1
         else:
             self.__full = True
             self.__index = 0
+
+    def count(self):
+        return self.__buffer_size if self.__full else self.__index
+
+    def is_empty(self):
+        return self.__index == 0 or self.__full
