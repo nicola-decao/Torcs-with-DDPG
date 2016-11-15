@@ -23,8 +23,11 @@ def train(episodes, steps_per_episode, gui=True):
         for j in range(steps_per_episode):
             # utils.print_progress(j + 1, steps_per_episode)
             action, sensors = env.step(action)
-            if env.check_sensors(sensors) == 1:
+            
+            if env.check_sensors(sensors):
+                print("out of track!")
                 env.restart_race()
+
             # Encoding of the sensor into a vector
             state_vec = DataHandler.encode_state_data(sensors)
 

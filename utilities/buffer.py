@@ -1,5 +1,4 @@
 import numpy as np
-from collections import deque
 
 
 class ReplayBuffer:
@@ -14,9 +13,13 @@ class ReplayBuffer:
         self.__buffer = np.empty((buffer_size, 2 * dim_state + dim_action + 1))
 
     def get_batch(self, batch_size):
-        rnd = np.random.choice(self.__index if not self.__full else self.__buffer_size,
-                               self.__index if not self.__full and self.__index < batch_size else batch_size,
-                               replace=False)
+        if self.__full:
+            rnd = np.random.choice(self.__buffer_size, batch_size, replace=False)
+        elif self.__index >= batch_size:
+            rnd = np.random.choice(self.__index, batch_size, replace=False)
+        else:
+            rnd = np.random.choice(self.__index, self.__index, replace=False)
+
         return self.__buffer[rnd, 0:self.__dim_state], \
                self.__buffer[rnd, self.__dim_state:self.__dim_action], \
                self.__buffer[rnd, self.__dim_action:self.__dim_reward], \

@@ -28,11 +28,9 @@ class Environment:
         else:
             self.restart_environment()
 
-    def check_sensors(self, sensors):
-        if abs(sensors['trackPos']) > 1:
-            print("out of track!")
-            return 1
-        return 0
+    @staticmethod
+    def check_sensors(sensors):
+        return abs(sensors['trackPos']) > 1
 
     def shutdown(self):
         self.server.shutdown()

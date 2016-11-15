@@ -82,5 +82,4 @@ class DeepDeterministicPolicyGradient:
 
         self.__last_state = state
         self.__last_action = action
-        print(action)
         return action
