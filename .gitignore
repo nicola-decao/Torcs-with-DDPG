@@ -22,7 +22,6 @@ lib64/
 parts/
 sdist/
 var/
-training_datasets/
 *.egg-info/
 .installed.cfg
 *.egg

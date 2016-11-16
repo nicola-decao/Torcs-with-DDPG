@@ -73,6 +73,7 @@ class DatasetGenerator:
             json_tricks.dump(self.observations, f)
             f.flush()
 
+
 def generate_training_dataset(gui=True):
     non_valid_runs = 0
     non_valid_tracks = []
@@ -119,6 +120,7 @@ def generate_training_dataset(gui=True):
     print('The failed tracks are:')
     for track in non_valid_tracks:
         print(track)
+
 
 def check_if_lap(lap, last_distance, current_distance):
     if last_distance == -1:
