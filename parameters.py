@@ -52,22 +52,27 @@ class NetorksStructure:
 
 
 class ExplorationNoise:
-    def __init__(self, max_step=1e05):
+    def __init__(self, max_step=1e05, tolerance=1e-04):
         self.__steering_noise = OrnstainUhlenbeck(theta=0.6, mu=0, sigma=0.3,
                                                   brownian_motion=OriginalRandom()) # BrownianMotion(delta=0.25, dt=0.1))
         self.__acceleration_noise = OrnstainUhlenbeck(theta=1.0, mu=0.5, sigma=0.1,
                                                       brownian_motion=OriginalRandom()) # BrownianMotion(delta=0.25, dt=0.1))
         self.__brake_noise = OrnstainUhlenbeck(theta=1.0, mu=-0.1, sigma=0.05,
                                                brownian_motion=OriginalRandom()) # BrownianMotion(delta=0.25, dt=0.1))
-        self.__magnitude = 1
+        self.__magnitude = 1.0
         self.__step = 1.0 / max_step
+        self.__tolerance = tolerance
 
     def add_noise(self, action):
         action[0, 0] += self.__magnitude * self.__steering_noise.sample(action[0, 0])
         action[0, 1] += self.__magnitude * self.__acceleration_noise.sample(action[0, 1])
         action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
 
-        self.__magnitude -= self.__step
+        if self.__magnitude > self.__tolerance:
+            self.__magnitude -= self.__step
+        else:
+            self.__magnitude = 1.0
+
         return action
 
 

@@ -23,12 +23,12 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
 
     time.sleep(6)
     env = Environment(track=track, track_type=track_type, gui=gui)
-    c = 0
+
+    distFromStart = []
 
     for i in range(episodes):
         action = None
         start = time.time()
-        distFromStart = []
 
         print('Episode ' + str(i + 1) + '/' + str(episodes))
 
@@ -50,8 +50,7 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
             # Decoding the data from prediction vector
             DataHandler.decode_action_data(action, action_vec)
 
-        if c % 10 == 0:
-            c = 1
+        if i % 10 == 9:
             if save:
                 print('saving models..')
                 model.save_models('actor.h5', 'critic.h5')
@@ -59,12 +58,10 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
             env.restart_environment()
         else:
             env.restart_race()
-        print('distFromStart mean: ', np.mean(distFromStart))
+
+        print('distFromStart mean: ', np.mean(distFromStart), 'of', len(distFromStart))
         print("Episode last {}".format(time.time() - start))
         print()
-        c += 1
-
-        # env.restart_environment()
 
     print('Simulation finished!')
     print()
@@ -75,4 +72,4 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
 
 if __name__ == "__main__":
     #first time set load to false then true
-    train(3000000, 10000, gui=True, load=False, save=True)
+    train(3000000, 10000, gui=False, load=True, save=True)
