@@ -114,4 +114,4 @@ class DDPGParams:
         if np.abs(state[0, 20]) > 0.9:
             return -200, False
         else:
-            return 300*state[0, 21] * (np.cos(state[0, 0]) - np.sin(state[0, 0]) - np.abs(state[0, 20])), True
+            return 300 * state[0, 21] * (np.cos(state[0, 0]) - np.sin(state[0, 0]) - np.abs(state[0, 20])), True
