@@ -79,13 +79,14 @@ class DeepDeterministicPolicyGradient:
             if not self.__buffer.is_empty():
 
                 # Sample batch from buffer
-                states, actions, y, new_states, = self.__buffer.get_batch(self.__batch_size)
+                states, actions, y, new_states, terminals = self.__buffer.get_batch(self.__batch_size)
+                terminals = np.ma.make_mask(terminals)
 
                 with self.__actor_session.graph.as_default():
                     a = self.__actor.target_predict(new_states)
 
                 with self.__critic_session.graph.as_default():
-                    y += self.__gamma * self.__critic.target_predict(new_states, a)
+                    y[terminals] += self.__gamma * self.__critic.target_predict(new_states, a)[terminals]
 
                     self.__critic.train_on_batch(states, actions, y)
                     self.__critic.update_target()
@@ -107,10 +108,10 @@ class DeepDeterministicPolicyGradient:
 
         if self.__last_action.any() and self.__last_state.any():
             # Compute reward
-            reward = self.__reward(state)
+            reward, terminal = self.__reward(state)
 
             # Update replay buffer
-            self.__buffer.add(state=self.__last_state, action=self.__last_action, reward=reward, new_state=state)
+            self.__buffer.add(state=self.__last_state, action=self.__last_action, reward=reward, new_state=state, terminal=terminal)
 
         self.__last_state = state
         self.__last_action = action

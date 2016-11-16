@@ -37,7 +37,7 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
 
             if env.check_sensors(sensors):
                 # print("out of track!")
-                distFromStart.append(sensors['distFromStart'])
+                print(sensors['distFromStart'])
                 env.restart_race()
 
             # Encoding of the sensor into a vector
@@ -53,7 +53,6 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
                 print('saving models..')
                 model.save_models('actor.h5', 'critic.h5')
                 print('saved!')
-                print('distFromStart mean: ', np.mean(distFromStart))
 
         print()
         print("Episode last {}".format(time.time()-start))
@@ -67,4 +66,4 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
     greetings()
 
 if __name__ == "__main__":
-    train(300, 100000, gui=False, load=True, save=True)
+    train(300, 100000, gui=False, load=False, save=True)

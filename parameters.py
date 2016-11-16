@@ -3,7 +3,7 @@ import random
 from keras.initializations import normal
 from keras.layers import Dense, Input, merge
 from keras.models import Model
-from utilities.distributions import OrnstainUhlenbeck, BrownianMotion
+from utilities.distributions import OrnstainUhlenbeck, BrownianMotion, OriginalRandom
 
 
 class DataHandler:
@@ -12,7 +12,7 @@ class DataHandler:
         state = np.empty((1, 29))
         state[0, 0] = sensors['angle'] / np.pi
         state[0, 1:20] = np.array(sensors['track']) / 200.0
-        state[0, 20] = sensors['trackPos']
+        state[0, 20] = sensors['trackPos'] / 1.0
         state[0, 21] = sensors['speedX'] / 300.0
         state[0, 22] = sensors['speedY'] / 300.0
         state[0, 23] = sensors['speedZ'] / 300.0
@@ -53,18 +53,18 @@ class NetorksStructure:
 
 
 class ExplorativeNoise:
-    def __init__(self, stochastic_brake=False):
+    def __init__(self):  #, stochastic_brake=False):
         self.__steering_noise = OrnstainUhlenbeck(theta=0.6, mu=0, sigma=0.3,
-                                                  brownian_motion=BrownianMotion(delta=0.25, dt=0.1))
+                                                  brownian_motion=OriginalRandom())  # BrownianMotion(delta=0.25, dt=0.1))
         self.__acceleration_noise = OrnstainUhlenbeck(theta=1.0, mu=0.5, sigma=0.1,
-                                                      brownian_motion=BrownianMotion(delta=0.25, dt=0.1))
-        self.__stochastic_brake = stochastic_brake
-        if self.__stochastic_brake:
-            self.__brake_noise = OrnstainUhlenbeck(theta=1.0, mu=0.5, sigma=0.1,
-                                                   brownian_motion=BrownianMotion(delta=0.25, dt=0.1))
-        else:
-            self.__brake_noise = OrnstainUhlenbeck(theta=1.0, mu=-0.1, sigma=0.05,
-                                                   brownian_motion=BrownianMotion(delta=0.25, dt=0.1))
+                                                      brownian_motion=OriginalRandom())  # BrownianMotion(delta=0.25, dt=0.1))
+        # self.__stochastic_brake = stochastic_brake
+        # if self.__stochastic_brake:
+        #     self.__brake_noise = OrnstainUhlenbeck(theta=1.0, mu=0.5, sigma=0.1,
+        #                                            brownian_motion=BrownianMotion(delta=0.25, dt=0.1))
+        # else:
+        self.__brake_noise = OrnstainUhlenbeck(theta=1.0, mu=-0.1, sigma=0.05,
+                                               brownian_motion=OriginalRandom())  # BrownianMotion(delta=0.25, dt=0.1))
         self.__magnitude = 1.0
         self.__samples = 0
 
@@ -72,12 +72,12 @@ class ExplorativeNoise:
         action[0, 0] += self.__magnitude * self.__steering_noise.sample(action[0, 0])
         action[0, 1] += self.__magnitude * self.__acceleration_noise.sample(action[0, 1])
 
-        if not self.__stochastic_brake:
-            action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
-        elif np.random.random_integers(1, 10) == 1:
-            action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
-        else:
-            action[0, 2] = 0
+        # if not self.__stochastic_brake:
+        action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
+        # elif np.random.random_integers(1, 10) == 1:
+        #     action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
+        # else:
+        #     action[0, 2] = 0
 
         # noise magnitude decay
         self.__samples += 1
@@ -94,8 +94,8 @@ class ModelTargetNeuralNetworkParams:
 
 class DDPGParams:
     def __init__(self):
-        self.STOCHASTIC_BRAKE = False
-        self.__explorative_noise = ExplorativeNoise(stochastic_brake=self.STOCHASTIC_BRAKE)
+        #self.STOCHASTIC_BRAKE = False
+        self.__explorative_noise = ExplorativeNoise()  # stochastic_brake=self.STOCHASTIC_BRAKE)
 
         self.BUFFER_SIZE = 100000
         self.BATCH_SIZE = 32
@@ -112,6 +112,6 @@ class DDPGParams:
     @staticmethod
     def __reward(state):
         if np.abs(state[0, 20]) > 0.9:
-            return -200
+            return -200, False
         else:
-            return 300 * state[0, 21] * (np.cos(state[0, 0]) + np.sin(state[0, 0]) + np.abs(state[0, 20]))
+            return 300*state[0, 21] * (np.cos(state[0, 0]) - np.sin(state[0, 0]) - np.abs(state[0, 20])), True
