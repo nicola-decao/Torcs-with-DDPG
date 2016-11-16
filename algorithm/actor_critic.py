@@ -15,7 +15,6 @@ class Actor(ModelTargetNeuralNetwork):
             zip(self.__gradient, self._model.trainable_weights))
         self.__mutex = threading.Semaphore()
 
-
     def train(self, states, action_gradient):
         action_gradient = action_gradient
         self.__mutex.acquire()
@@ -26,14 +25,12 @@ class Actor(ModelTargetNeuralNetwork):
         self.__mutex.release()
 
     def predict(self, state):
-        # return np.reshape(self._model.predict(state), (state.shape[0], self._model.output[0].get_shape()[0]))
         self.__mutex.acquire()
         result = self._model.predict(state)
         self.__mutex.release()
         return result
 
     def target_predict(self, state):
-        # return np.reshape(self._target.predict(state), (state.shape[0], self._model.output[0].get_shape()[0]))
         return self._target.predict(state)
 
 
@@ -51,10 +48,10 @@ class Critic(ModelTargetNeuralNetwork):
         })[0]
 
     def predict(self, state, action):
-        return self._model.predict([state, action])[0, 0]
+        return self._model.predict([state, action])
 
     def target_predict(self, state, action):
-        return self._target.predict([state, action])[0, 0]
+        return self._target.predict([state, action])
 
     def train_on_batch(self, states, actions, y):
         self._model.train_on_batch([states, actions], y)
