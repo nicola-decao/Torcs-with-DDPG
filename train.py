@@ -23,7 +23,6 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
 
     time.sleep(3)
     env = Environment(track=track, track_type=track_type, gui=gui)
-    distFromStart = []
 
     for i in range(episodes):
         action = None
@@ -56,7 +55,7 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
 
         print()
         print("Episode last {}".format(time.time()-start))
-        env.restart_environment()
+        env.restart_race()
 
     print('Simulation finished!')
     print()
@@ -66,4 +65,4 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
     greetings()
 
 if __name__ == "__main__":
-    train(300, 100000, gui=False, load=False, save=True)
+    train(300, 10000, gui=True, load=True, save=True)

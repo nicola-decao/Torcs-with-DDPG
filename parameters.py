@@ -1,5 +1,4 @@
 import numpy as np
-import random
 from keras.initializations import normal
 from keras.layers import Dense, Input, merge
 from keras.models import Model
@@ -52,36 +51,23 @@ class NetorksStructure:
         return Model(input=[state, action], output=Dense(1, activation='linear')(h3))
 
 
-class ExplorativeNoise:
-    def __init__(self):  #, stochastic_brake=False):
+class ExplorationNoise:
+    def __init__(self, max_step=1e05):
         self.__steering_noise = OrnstainUhlenbeck(theta=0.6, mu=0, sigma=0.3,
-                                                  brownian_motion=OriginalRandom())  # BrownianMotion(delta=0.25, dt=0.1))
+                                                  brownian_motion=OriginalRandom()) # BrownianMotion(delta=0.25, dt=0.1))
         self.__acceleration_noise = OrnstainUhlenbeck(theta=1.0, mu=0.5, sigma=0.1,
-                                                      brownian_motion=OriginalRandom())  # BrownianMotion(delta=0.25, dt=0.1))
-        # self.__stochastic_brake = stochastic_brake
-        # if self.__stochastic_brake:
-        #     self.__brake_noise = OrnstainUhlenbeck(theta=1.0, mu=0.5, sigma=0.1,
-        #                                            brownian_motion=BrownianMotion(delta=0.25, dt=0.1))
-        # else:
+                                                      brownian_motion=OriginalRandom()) # BrownianMotion(delta=0.25, dt=0.1))
         self.__brake_noise = OrnstainUhlenbeck(theta=1.0, mu=-0.1, sigma=0.05,
-                                               brownian_motion=OriginalRandom())  # BrownianMotion(delta=0.25, dt=0.1))
-        self.__magnitude = 1.0
-        self.__samples = 0
+                                               brownian_motion=OriginalRandom()) # BrownianMotion(delta=0.25, dt=0.1))
+        self.__magnitude = 1
+        self.__step = 1.0 / max_step
 
     def add_noise(self, action):
         action[0, 0] += self.__magnitude * self.__steering_noise.sample(action[0, 0])
         action[0, 1] += self.__magnitude * self.__acceleration_noise.sample(action[0, 1])
-
-        # if not self.__stochastic_brake:
         action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
-        # elif np.random.random_integers(1, 10) == 1:
-        #     action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
-        # else:
-        #     action[0, 2] = 0
 
-        # noise magnitude decay
-        self.__samples += 1
-        self.__magnitude = max(0, self.__magnitude - 1e-05)
+        self.__magnitude -= self.__step
         return action
 
 
@@ -94,8 +80,7 @@ class ModelTargetNeuralNetworkParams:
 
 class DDPGParams:
     def __init__(self):
-        #self.STOCHASTIC_BRAKE = False
-        self.__explorative_noise = ExplorativeNoise()  # stochastic_brake=self.STOCHASTIC_BRAKE)
+        self.__exploration_noise = ExplorationNoise()
 
         self.BUFFER_SIZE = 100000
         self.BATCH_SIZE = 32
@@ -106,12 +91,12 @@ class DDPGParams:
                                                            net=NetorksStructure.create_actor_net)
         self.CRITIC_PARAMS = ModelTargetNeuralNetworkParams(learning_rate=0.001, tau=0.001,
                                                             net=NetorksStructure.create_critic_net)
-        self.NOISE_FUNCTION = self.__explorative_noise.add_noise
+        self.NOISE_FUNCTION = self.__exploration_noise.add_noise
         self.REWARD_FUNCTION = self.__reward
 
     @staticmethod
     def __reward(state):
-        if np.abs(state[0, 20]) > 0.9:
+        if np.abs(state[0, 20]) > 0.8:
             return -200, False
         else:
             return 300 * state[0, 21] * (np.cos(state[0, 0]) - np.sin(state[0, 0]) - np.abs(state[0, 20])), True
