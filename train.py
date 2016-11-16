@@ -24,13 +24,12 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
 
         time.sleep(6)
         env = Environment(track=track, track_type=track_type, gui=gui)
-        distFromStart = []
-
         c=0
 
         for i in range(episodes):
             action = None
             start = time.time()
+            distFromStart = []
 
             print('Episode ' + str(i + 1) + '/' + str(episodes))
 
@@ -60,12 +59,15 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
                     model.save_models('actor.h5', 'critic.h5')
                     print('saved!')
                 env.restart_environment()
+            else:
+                env.restart_race()
             print('distFromStart mean: ', np.mean(distFromStart))
             print("Episode last {}".format(time.time()-start))
             print()
             c+=1
-            env.restart_race()
+
             #env.restart_environment()
+
 
         print('Simulation finished!')
         print()
@@ -77,4 +79,5 @@ def train(episodes, steps_per_episode, gui=True, load=False, save=True):
         train(3000000, 10000, gui=False, load=True, save=True)
 
 if __name__ == "__main__":
-    train(3000000, 10000, gui=False, load=False, save=True)
+    #first time set load to false then true
+    train(3000000, 10000, gui=True, load=False, save=True)
