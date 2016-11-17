@@ -21,9 +21,9 @@ class BrownianMotion:
 
 class OrnstainUhlenbeck:
 
-    def __init__(self, theta, mu, sigma, brownian_motion):
-        self.__theta, self.__mu, self.__sigma, self.__brownian_motion = theta, mu, sigma, brownian_motion
+    def __init__(self, theta, mu, sigma, rnd):
+        self.__theta, self.__mu, self.__sigma, self.__rnd = theta, mu, sigma, rnd
 
     def sample(self, x):
-        return self.__theta * (self.__mu - x) + self.__sigma * self.__brownian_motion.sample()
+        return self.__theta * (self.__mu - x) + self.__sigma * self.__rnd.sample()
 

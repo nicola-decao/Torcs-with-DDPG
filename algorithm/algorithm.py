@@ -100,7 +100,7 @@ class DeepDeterministicPolicyGradient:
         # Predict the action using the actor network
         with self.__actor_session.graph.as_default():
             action = self.__actor.predict(state)
-
+        # action = np.zeros((1, 3))
         # Adding explorative noise to the prediction
         action = self.__add_noise(action)
 
