@@ -68,7 +68,11 @@ class ExplorationNoise:
         self.__step = 1.0 / max_step
         self.__tolerance = tolerance
 
-    def add_noise(self, action):
+    def add_noise(self, action, loss=0):
+
+        self.__magnitude = 1.0 / (1.0 + np.exp(-loss*5 + 4))
+        #print(self.__magnitude)
+
         action[0, 0] += self.__magnitude * self.__steering_noise.sample(action[0, 0])
         action[0, 1] += self.__magnitude * self.__acceleration_noise.sample(action[0, 1])
 
@@ -79,10 +83,10 @@ class ExplorationNoise:
         else:
             action[0, 2] = 0
 
-        if self.__magnitude > self.__tolerance:
-            self.__magnitude -= self.__step
-        else:
-            self.__magnitude = 1.0
+        # if self.__magnitude > self.__tolerance:
+        #     self.__magnitude -= self.__step
+        # else:
+        #     self.__magnitude = 0.2
 
         return action
 
@@ -111,7 +115,7 @@ class DDPGParams:
 
     @staticmethod
     def __reward(state):
-        if np.abs(state[0, 20]) > 0.8:
-            return -200, False
-        else:
-            return 300 * state[0, 21] * (np.cos(state[0, 0]) - np.sin(state[0, 0]) - np.abs(state[0, 20])), True
+        # if np.abs(state[0, 20]) > 0.8:
+        #     return -2, False
+        # else:
+        return state[0, 21] * (np.cos(state[0, 0]) - np.abs(np.sin(state[0, 0])) - np.abs(state[0, 20])), True

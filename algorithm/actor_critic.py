@@ -10,13 +10,12 @@ class Actor(ModelTargetNeuralNetwork):
         super().__init__(session, params)
 
         self.__action_gradient = tf.placeholder(tf.float32, [None, self._model.output[0].get_shape()[0]])
-        self.__gradient = tf.gradients(self._model.output, self._model.trainable_weights, -self.__action_gradient)
+        self.__gradient = tf.gradients(self._model.output, self._model.trainable_weights, self.__action_gradient)
         self.__optimize = tf.train.AdamOptimizer(params.LEARNING_RATE).apply_gradients(
             zip(self.__gradient, self._model.trainable_weights))
         self.__mutex = threading.Semaphore()
 
     def train(self, states, action_gradient):
-        action_gradient = action_gradient
         self.__mutex.acquire()
         self._session.run(self.__optimize, feed_dict={
             self._model.input: states,
@@ -54,4 +53,4 @@ class Critic(ModelTargetNeuralNetwork):
         return self._target.predict([state, action])
 
     def train_on_batch(self, states, actions, y):
-        self._model.train_on_batch([states, actions], y)
+        return self._model.train_on_batch([states, actions], y)

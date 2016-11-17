@@ -44,6 +44,8 @@ class DeepDeterministicPolicyGradient:
         self.__gamma = params.GAMMA
 
         self.__train_networks = True
+        self.rf = open('reward.log', 'w')
+        self.f = open('loss2.log', 'w')
         self.__training_thread = threading.Thread(target=self.__train)
         self.__training_thread.daemon = True
         self.__training_thread.start()
@@ -73,6 +75,7 @@ class DeepDeterministicPolicyGradient:
         sleep(1)
 
     def __train(self):
+
         while self.__train_networks:
             if not self.__buffer.is_empty():
 
@@ -82,15 +85,18 @@ class DeepDeterministicPolicyGradient:
 
                 with self.__actor_session.graph.as_default():
                     a = self.__actor.target_predict(new_states)
+                    p = self.__actor.predict(states)
 
                 with self.__critic_session.graph.as_default():
                     y += self.__gamma * self.__critic.target_predict(new_states, a)
 
-                    self.__critic.train_on_batch(states, actions, y)
+                    loss = self.__critic.train_on_batch(states, actions, y)
+
+                    grad = self.__critic.gradients(states, p)
                     self.__critic.update_target()
 
                 with self.__actor_session.graph.as_default():
-                    self.__actor.train(states, self.__critic.gradients(states, self.__actor.predict(states)))
+                    self.__actor.train(states, grad)
                     self.__actor.update_target()
 
             else:
@@ -100,13 +106,22 @@ class DeepDeterministicPolicyGradient:
         # Predict the action using the actor network
         with self.__actor_session.graph.as_default():
             action = self.__actor.predict(state)
-        # action = np.zeros((1, 3))
-        # Adding explorative noise to the prediction
-        action = self.__add_noise(action)
+
 
         if self.__last_action.any() and self.__last_state.any():
             # Compute reward
             reward, terminal = self.__reward(state)
+
+            # Adding explorative noise to the prediction
+            with self.__critic_session.graph.as_default():
+                loss = (self.__critic.predict(self.__last_state, self.__last_action)[0, 0] - reward)**2
+
+            self.f.write(str(loss) + '\n')
+            #self.f.flush()
+
+            action = self.__add_noise(action, loss)
+
+            self.rf.write(str(reward) + '\n')
 
             # Update replay buffer
             self.__buffer.add(state=self.__last_state, action=self.__last_action, reward=reward, new_state=state, terminal=terminal)
