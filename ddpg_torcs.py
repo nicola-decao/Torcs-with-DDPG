@@ -101,6 +101,6 @@ def test(file_path, track='g-track-1', timeout=40000):
     agent.test(env, visualize=False)
 
 if __name__ == "__main__":
-    train(load=True, gui=True, save=True, file_path='trained_networks/weights.h5f', timeout=40000, verbose=1, track='f-speedway')
+    train(load=False, gui=True, save=True, file_path='trained_networks/weights.h5f', timeout=40000, verbose=1)
     #test('trained_networks/weights.h5f', track="f-speedway", timeout=40000)
 
