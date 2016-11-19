@@ -74,13 +74,13 @@ def train(load=False, save=False, gui=True, file_path='', timeout=10000, track='
     if load:
         agent.load_weights(file_path)
 
-    agent.fit(env, nb_steps=nb_steps, visualize=False, verbose=verbose, nb_max_episode_steps=nb_steps)
+    agent.fit(env, nb_steps=nb_steps, visualize=False, verbose=verbose, nb_max_episode_steps=nb_max_episode_steps)
 
     if save:
         agent.save_weights(file_path, overwrite=True)
 
-def test(file_path, track='g-track-1'):
-    env = TorcsEnv(gui=True, track=track)
+def test(file_path, track='g-track-1', timeout=40000):
+    env = TorcsEnv(gui=True, track=track, timeout=timeout)
 
     actor = get_actor(env)
     critic, action_input = get_critic(env)
@@ -101,6 +101,6 @@ def test(file_path, track='g-track-1'):
     agent.test(env, visualize=False)
 
 if __name__ == "__main__":
-    train(load=True, gui=True, save=True, file_path='trained_networks/weights.h5f', timeout=40000, track='spring', verbose=1)
-    # test('trained_networks/weights.h5f')
+    train(load=True, gui=True, save=True, file_path='trained_networks/weights.h5f', timeout=40000, verbose=1, track='f-speedway')
+    #test('trained_networks/weights.h5f', track="f-speedway", timeout=40000)
 
