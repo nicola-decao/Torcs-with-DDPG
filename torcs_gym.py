@@ -51,15 +51,18 @@ TRACK_LIST = {'aalborg': 'road',
 
 class TorcsEnv(Env):
     def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True):
+        # TODO fix gui=False
+
         self.gui = gui
         self.server = self.Server(track, TRACK_LIST[track], gui)
         self.client = self.Client(self.server, host, port, sid)
-        self.__terminal_judge_start = 200
+        self.__terminal_judge_start = 2000
         self.__termination_limit_progress = 20
         self.__time_stop = 0
         self.__last_speedX = 0
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,))
         self.observation_space = spaces.Box(low=0, high=0, shape=(29,))
+        self.__t = time.time()
 
     def _reset(self):
         if self.gui:
@@ -71,6 +74,8 @@ class TorcsEnv(Env):
         return self.__encode_state_data(self.client.step())
 
     def _step(self, action):
+        print(time.time()-self.__t)
+        self.__t = time.time()
         a = self.__decode_action_data(action)
 
         # if self.__last_speedX < 50:

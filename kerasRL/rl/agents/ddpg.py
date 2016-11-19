@@ -223,7 +223,6 @@ class DDPGAgent(Agent):
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
             noise = (1 - self.step / float(self.nb_steps)) * self.epsilon * self.random_process.sample()
-            print((1 - self.step / float(self.nb_steps)) * self.epsilon)
             assert noise.shape == action.shape
 
         if self.training and np.random.rand(1) < -1:
