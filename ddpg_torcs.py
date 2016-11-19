@@ -51,8 +51,9 @@ def export_dl4j(self, filename):
 
     np.savetxt(filename, np.array(r))
 
-def train(load=False, save=False, gui=True, file_path='', timeout=10000):
-    env = TorcsEnv(gui=gui, timeout=timeout)
+def train(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1', verbose=0,
+          nb_steps=50000, nb_max_episode_steps=10000):
+    env = TorcsEnv(gui=gui, timeout=timeout, track=track)
 
     actor = get_actor(env)
     critic, action_input = get_critic(env)
@@ -73,13 +74,13 @@ def train(load=False, save=False, gui=True, file_path='', timeout=10000):
     if load:
         agent.load_weights(file_path)
 
-    agent.fit(env, nb_steps=50000, visualize=False, verbose=1, nb_max_episode_steps=10000)
+    agent.fit(env, nb_steps=nb_steps, visualize=False, verbose=verbose, nb_max_episode_steps=nb_steps)
 
     if save:
         agent.save_weights(file_path, overwrite=True)
 
-def test(file_path):
-    env = TorcsEnv(gui=True)
+def test(file_path, track='g-track-1'):
+    env = TorcsEnv(gui=True, track=track)
 
     actor = get_actor(env)
     critic, action_input = get_critic(env)
@@ -100,6 +101,6 @@ def test(file_path):
     agent.test(env, visualize=False)
 
 if __name__ == "__main__":
-    train(load=True, gui=True, save=True, file_path='trained_networks/weights.h5f', timeout=40000)
-    #test('trained_networks/weights.h5f')
+    train(load=True, gui=True, save=True, file_path='trained_networks/weights.h5f', timeout=40000, track='spring', verbose=1)
+    # test('trained_networks/weights.h5f')
 
