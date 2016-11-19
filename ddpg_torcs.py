@@ -51,8 +51,8 @@ def export_dl4j(self, filename):
 
     np.savetxt(filename, np.array(r))
 
-def train():
-    env = TorcsEnv(gui=True)
+def train(load=False, save=False, gui=True, file_path='', timeout=10000):
+    env = TorcsEnv(gui=gui, timeout=timeout)
 
     actor = get_actor(env)
     critic, action_input = get_critic(env)
@@ -70,14 +70,36 @@ def train():
 
     agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
 
-    # agent.load_weights('trained_networks/weights.h5f')
+    if load:
+        agent.load_weights(file_path)
 
-    agent.fit(env, nb_steps=50000, visualize=False, verbose=0, nb_max_episode_steps=10000)
+    agent.fit(env, nb_steps=50000, visualize=False, verbose=1, nb_max_episode_steps=10000)
 
-    agent.save_weights('trained_networks/weights.h5f', overwrite=True)
+    if save:
+        agent.save_weights(file_path, overwrite=True)
 
-    #agent.test(env, nb_episodes=5, visualize=False, nb_max_episode_steps=20000)
+def test(file_path):
+    env = TorcsEnv(gui=True)
+
+    actor = get_actor(env)
+    critic, action_input = get_critic(env)
+
+    memory = SequentialMemory(limit=100000, window_length=1)
+
+    random_process = OrnsteinUhlenbeckTriple(OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.1),
+                                             OrnsteinUhlenbeckProcess(theta=1.0, mu=0.8, sigma=0.1),
+                                             OrnsteinUhlenbeckProcess(theta=0.2, mu=1.0, sigma=0.1))
+
+    agent = DDPGAgent(nb_actions=env.action_space.shape[0], actor=actor, critic=critic,
+                      critic_action_input=action_input,
+                      memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                      random_process=random_process, gamma=GAMMA, target_model_update=TAU, epsilon=EPSILON)
+
+    agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
+    agent.load_weights(file_path)
+    agent.test(env, visualize=False)
 
 if __name__ == "__main__":
-    train()
+    train(load=True, gui=True, save=True, file_path='trained_networks/weights.h5f', timeout=40000)
+    #test('trained_networks/weights.h5f')
 

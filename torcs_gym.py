@@ -50,11 +50,11 @@ TRACK_LIST = {'aalborg': 'road',
 
 
 class TorcsEnv(Env):
-    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True):
+    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True, timeout=10000):
         # TODO fix gui=False
 
         self.gui = gui
-        self.server = self.Server(track, TRACK_LIST[track], gui)
+        self.server = self.Server(track, TRACK_LIST[track], gui, timeout=timeout)
         self.client = self.Client(self.server, host, port, sid)
         self.__terminal_judge_start = 2000
         self.__termination_limit_progress = 20
@@ -71,10 +71,11 @@ class TorcsEnv(Env):
             self.server.restart()
         self.client.restart()
         self.__time_stop = 0
+        time.sleep(0.1)
         return self.__encode_state_data(self.client.step())
 
     def _step(self, action):
-        print(time.time()-self.__t)
+        #print(time.time()-self.__t)
         self.__t = time.time()
         a = self.__decode_action_data(action)
 
@@ -141,11 +142,13 @@ class TorcsEnv(Env):
 
     class Server:
 
-        def __init__(self, track, track_type, gui):
+        def __init__(self, track, track_type, gui, timeout=10000):
             self.__gui = gui
             self.__quickrace_xml_path = os.path.expanduser('~') + '/.torcs/config/raceman/quickrace.xml'
             self.__create_race_xml(track, track_type)
+            self.__timeout = timeout
             self.__init_server()
+
 
         @staticmethod
         def __cmd_exists(cmd):
@@ -156,9 +159,9 @@ class TorcsEnv(Env):
             time.sleep(0.1)
             if self.__gui:
                 if self.__cmd_exists('optirun'):
-                    os.system('optirun torcs -nofuel -nodamage -nolaptime &')
+                    os.system('optirun torcs -nofuel -nodamage -nolaptime -t {} &'.format(self.__timeout))
                 else:
-                    os.system('torcs -nofuel -nodamage -nolaptime &')
+                    os.system('torcs -nofuel -nodamage -nolaptime -t {} &'.format(self.__timeout))
                 time.sleep(2)
                 os.system('sh autostart.sh')
             else:
