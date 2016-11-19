@@ -11,7 +11,7 @@ from torcs_gym import TorcsEnv
 
 
 GAMMA = 0.99
-EPSILON = 1.0
+EPSILON = 0.3
 TAU = 1e-3
 
 def get_actor(env):
