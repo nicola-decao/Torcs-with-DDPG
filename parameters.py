@@ -79,7 +79,7 @@ class ExplorationNoise:
         if not self.__stochastic_brake:
             action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
         elif np.random.random() < 0.05:
-            action[0, 2] + self.__magnitude * self.__brake_noise.sample(action[0, 2])
+            action[0, 2] += self.__magnitude * self.__brake_noise.sample(action[0, 2])
         else:
             action[0, 2] = 0
 
