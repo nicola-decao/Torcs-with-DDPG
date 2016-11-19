@@ -51,31 +51,33 @@ def export_dl4j(self, filename):
 
     np.savetxt(filename, np.array(r))
 
+def train():
+    env = TorcsEnv(gui=True)
 
-env = TorcsEnv(gui=True)
+    actor = get_actor(env)
+    critic, action_input = get_critic(env)
 
+    memory = SequentialMemory(limit=100000, window_length=1)
 
-actor = get_actor(env)
-critic, action_input = get_critic(env)
+    random_process = OrnsteinUhlenbeckTriple(OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.1),
+                                             OrnsteinUhlenbeckProcess(theta=1.0, mu=0.8, sigma=0.1),
+                                             OrnsteinUhlenbeckProcess(theta=0.2, mu=1.0, sigma=0.1))
 
+    agent = DDPGAgent(nb_actions=env.action_space.shape[0], actor=actor, critic=critic,
+                      critic_action_input=action_input,
+                      memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                      random_process=random_process, gamma=GAMMA, target_model_update=TAU, epsilon=EPSILON)
 
+    agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
 
-memory = SequentialMemory(limit=100000, window_length=1)
+    # agent.load_weights('trained_networks/weights.h5f')
 
-random_process = OrnsteinUhlenbeckTriple(OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.1),
-                                         OrnsteinUhlenbeckProcess(theta=1.0, mu=0.8, sigma=0.1),
-                                         OrnsteinUhlenbeckProcess(theta=0.2, mu=1.0, sigma=0.1))
+    agent.fit(env, nb_steps=50000, visualize=False, verbose=0, nb_max_episode_steps=10000)
 
-agent = DDPGAgent(nb_actions=env.action_space.shape[0], actor=actor, critic=critic, critic_action_input=action_input,
-                  memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                  random_process=random_process, gamma=GAMMA, target_model_update=TAU, epsilon=EPSILON)
+    agent.save_weights('trained_networks/weights.h5f', overwrite=True)
 
-agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
+    #agent.test(env, nb_episodes=5, visualize=False, nb_max_episode_steps=20000)
 
-agent.load_weights('weights.h5f')
+if __name__ == "__main__":
+    train()
 
-agent.fit(env, nb_steps=50000, visualize=False, verbose=0, nb_max_episode_steps=10000)
-
-agent.save_weights('weights.h5f', overwrite=True)
-
-agent.test(env, nb_episodes=5, visualize=False, nb_max_episode_steps=20000)
