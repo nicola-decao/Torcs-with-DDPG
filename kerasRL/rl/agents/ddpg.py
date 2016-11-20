@@ -48,9 +48,6 @@ class DDPGAgent(Agent):
             # Soft update with `(1 - target_model_update) * old + target_model_update * new`.
             target_model_update = float(target_model_update)
 
-        # epsilon greedy
-        self.epsilon = epsilon
-
         # Parameters.
         self.nb_actions = nb_actions
         self.processor = processor
@@ -222,16 +219,9 @@ class DDPGAgent(Agent):
 
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
-            noise = (1 - self.step / float(self.nb_steps)) * self.epsilon * self.random_process.sample()
+            noise = self.random_process.sample()
             assert noise.shape == action.shape
-
-        if self.training and np.random.rand(1) < -1:
             action += noise
-        else:
-            if self.training:
-                action[0] += noise[0]
-                action[1] += noise[1]
-            action[2] = 0
 
         return action
 
