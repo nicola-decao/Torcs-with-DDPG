@@ -50,19 +50,23 @@ TRACK_LIST = {'aalborg': 'road',
 
 
 class TorcsEnv(Env):
-    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True, timeout=10000):
+    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True, timeout=10000, reward=None):
         # TODO fix gui=False
 
         self.gui = gui
         self.server = self.Server(track, TRACK_LIST[track], gui, timeout=timeout)
         self.client = self.Client(self.server, host, port, sid)
-        self.__terminal_judge_start = 2000
+        self.__terminal_judge_start = 500
         self.__termination_limit_progress = 20
         self.__time_stop = 0
-        self.__last_speedX = 0
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,))
+
+        if reward:
+            self.__reward = reward
+        else:
+            self.__reward = self.__default_reward
+
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
         self.observation_space = spaces.Box(low=0, high=0, shape=(29,))
-        self.__t = time.time()
 
     def _reset(self):
         if self.gui:
@@ -74,63 +78,46 @@ class TorcsEnv(Env):
         time.sleep(0.1)
         return self.__encode_state_data(self.client.step())
 
+    def __default_reward(self, observation):
+        if np.abs(observation[20]) > 0.99:
+            return -200
+        else:
+            return 300 * observation[21] * (
+                np.cos(observation[0] * np.pi)
+                - np.abs(np.sin(observation[0] * np.pi))
+                - np.abs(observation[20]))
+
+    def __check_done(self, observation):
+        if 300 * observation[21] < self.__termination_limit_progress:
+            self.__time_stop += 1
+        else:
+            self.__time_stop = 0
+
+        return self.__time_stop > self.__terminal_judge_start or np.abs(observation[20]) > 0.99
+
     def _step(self, action):
-        #print(time.time()-self.__t)
         self.__t = time.time()
         a = self.__decode_action_data(action)
-
-        # if self.__last_speedX < 50:
-        #     a['gear'] = 1
-        # elif self.__last_speedX < 80:
-        #     a['gear'] = 2
-        # elif self.__last_speedX < 110:
-        #     a['gear'] = 3
-        # elif self.__last_speedX < 140:
-        #     a['gear'] = 4
-        # elif self.__last_speedX < 170:
-        #     a['gear'] = 5
-        # else:
-        #     a['gear'] = 6
-
         sensors = self.client.step(a)
         observation = self.__encode_state_data(sensors)
-        self.__last_speedX = sensors['speedX']
-
-        if np.abs(observation[20]) > 0.99:
-            reward, done = -200, True
-        else:
-            reward = 300 * observation[21] * (
-                np.cos(observation[0] * (np.pi ** 2))
-                - np.abs(np.sin(observation[0] * (np.pi ** 2))))
-
-            # reward = 300 * observation[21] * (
-            #                 np.cos(observation[0] * (np.pi ** 2))
-            #                 - np.abs(np.sin(observation[0] * (np.pi ** 2)))
-            #                 - np.abs(observation[20]))
-
-            done = False  # self.__terminal_judge_start < self.__time_step and reward < self.__termination_limit_progress
-            if 300 * observation[21] < 20:
-                self.__time_stop += 1
-            else:
-                self.__time_stop = 0
-
-            if self.__time_stop > self.__terminal_judge_start:
-                done = True
-
+        reward = self.__reward(observation)
+        done = self.__check_done(observation)
         return observation, reward, done, {}
 
     @staticmethod
     def __decode_action_data(actions_vec):
         actions_dic = TorcsEnv.Client.get_empty_actions()
         actions_dic['steer'] = actions_vec[0]
-        actions_dic['accel'] = actions_vec[1]
-        actions_dic['brake'] = actions_vec[2]
+        if actions_vec[1] >= 0:
+            actions_dic['accel'] = actions_vec[1]
+        else:
+            actions_dic['brake'] = -actions_vec[1]
         return actions_dic
 
     @staticmethod
     def __encode_state_data(sensors):
         state = np.empty(29)
-        state[0] = sensors['angle'] / np.pi
+        state[0] = sensors['angle']
         state[1:20] = np.array(sensors['track']) / 200.0
         state[20] = sensors['trackPos'] / 1.0
         state[21] = sensors['speedX'] / 300.0

@@ -1,4 +1,3 @@
-
 import numpy as np
 from keras.layers import Dense, Flatten, Input, merge
 from keras.models import Model
@@ -9,21 +8,45 @@ from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from torcs_gym import TorcsEnv
 
 GAMMA = 0.99
-EPSILON = 0.3
+EPSILON = 1.0
 TAU = 1e-3
 
 
-class DDPGTorcs:
+class ProgressiveSmoothingReward:
+    def __init__(self, reward_in_center=1.0, reward_off_road=-10.0, smoothing_factor=1e-05, max_smoothing=20,
+                 speed_weight=10.0, alpha = 1.0):
+        self.__reward_in_center = reward_in_center
+        self.__reward_off_road = reward_off_road
+        self.__smoothing_factor = smoothing_factor
+        self.__smoothing = 1.0
+        self.__max_smoothing = max_smoothing
+        self.__speed_weight = speed_weight
+        self.__alpha = alpha
+        self.__previous_speed = 0
 
+    def reward(self, observation):
+        positioning_score = self.__reward_in_center - (np.abs(observation[20]) ** self.__smoothing) * (
+        self.__reward_in_center - self.__reward_off_road)
+        if self.__max_smoothing > self.__smoothing:
+            self.__smoothing += self.__smoothing_factor
+
+        speed_score = observation[21] * np.cos(observation[0] * np.pi)
+
+        progress_penalty = (speed_score - self.__previous_speed) / (speed_score + self.__alpha) - 1
+
+        r = positioning_score + self.__speed_weight * speed_score + progress_penalty
+        print(progress_penalty)
+        self.__previous_speed = speed_score
+        return r
+
+
+class DDPGTorcs:
     @staticmethod
     def __get_actor(env):
         observation_input = Input(shape=(1,) + env.observation_space.shape)
         h0 = Dense(300, activation='relu')(Flatten()(observation_input))
         h1 = Dense(600, activation='relu')(h0)
-        Steering = Dense(1, activation='tanh')(h1)
-        Acceleration = Dense(1, activation='sigmoid')(h1)
-        Brake = Dense(1, activation='sigmoid')(h1)
-        output = merge([Steering, Acceleration, Brake], mode='concat')
+        output = Dense(2, activation='tanh')(h1)
         return Model(input=observation_input, output=output)
 
     @staticmethod
@@ -47,7 +70,7 @@ class DDPGTorcs:
     def __run(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track)
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=ProgressiveSmoothingReward().reward)
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -55,10 +78,9 @@ class DDPGTorcs:
         memory = SequentialMemory(limit=100000, window_length=1)
 
         random_process = ExplorationNoise(nb_steps=nb_steps,
-                                          epsilon=0.5,
-                                          steer=OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.1),
-                                          accel=OrnsteinUhlenbeckProcess(theta=1.0, mu=0.8, sigma=0.1),
-                                          brake=OrnsteinUhlenbeckProcess(theta=0.2, mu=-1.0, sigma=0.1))
+                                          epsilon=0.3,
+                                          steer=OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.3),
+                                          accel_brake=OrnsteinUhlenbeckProcess(theta=1.0, mu=0.5, sigma=0.3))
 
         agent = DDPGAgent(nb_actions=env.action_space.shape[0],
                           actor=actor, critic=critic,
@@ -78,7 +100,9 @@ class DDPGTorcs:
             agent.test(env, visualize=False)
 
         if save:
+            print('Saving..')
             agent.save_weights(file_path, overwrite=True)
+            print('Saved!')
 
     @staticmethod
     def train(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1',
@@ -94,21 +118,20 @@ class DDPGTorcs:
 
 
 class ExplorationNoise:
-    def __init__(self, nb_steps, epsilon, steer, accel, brake):
+    def __init__(self, nb_steps, epsilon, steer, accel_brake):
         self.__step = 1.0 / nb_steps
         self.__epsilon = epsilon
         self.__steer = steer
-        self.__accel = accel
-        self.__brake = brake
+        self.__accel_brake = accel_brake
         self.__noise = 1
 
     def sample(self):
         self.__noise -= self.__step
         return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0],
-                                                         self.__accel.sample()[0],
-                                                         self.__brake.sample()[0]])
+                                                         self.__accel_brake.sample()[0]])
+
 
 if __name__ == "__main__":
-    DDPGTorcs.train(load=True, gui=True, save=True, timeout=40000, file_path='trained_networks/weights.h5f', track='spring', verbose=0)
-    #DDPGTorcs.test('trained_networks/weights.h5f')
-
+    DDPGTorcs.train(load=False, gui=True, save=True, file_path='trained_networks/weights_new_reward.h5f',
+                    verbose=0)
+    #DDPGTorcs.test('trained_networks/weights.h5f', track='aalborg')
