@@ -5,38 +5,41 @@ from keras.optimizers import Adam
 from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
-from torcs_gym import TorcsEnv
+from torcs_gym import TorcsEnv, TRACK_LIST
 
 GAMMA = 0.99
-EPSILON = 1.0
 TAU = 1e-3
 
 
 class ProgressiveSmoothingReward:
-    def __init__(self, reward_in_center=1.0, reward_off_road=-10.0, smoothing_factor=1e-05, max_smoothing=20,
-                 speed_weight=10.0, alpha = 1.0):
-        self.__reward_in_center = reward_in_center
+    def __init__(self, reward_off_road=-40.0, smoothing_factor=1e-05, max_smoothing=40,
+                 speed_weight=10.0, smoothing=1.0, theta=1.0):
         self.__reward_off_road = reward_off_road
         self.__smoothing_factor = smoothing_factor
-        self.__smoothing = 1.0
+        self.__smoothing = smoothing
         self.__max_smoothing = max_smoothing
         self.__speed_weight = speed_weight
-        self.__alpha = alpha
+        self.__alpha = 1.0
+        self.__theta = theta
+        self.__theta_decay = 1e-6
         self.__previous_speed = 0
 
     def reward(self, observation):
-        positioning_score = self.__reward_in_center - (np.abs(observation[20]) ** self.__smoothing) * (
-        self.__reward_in_center - self.__reward_off_road)
+        positioning_score = - (np.abs(observation[20]) ** self.__smoothing) * (- self.__reward_off_road)
         if self.__max_smoothing > self.__smoothing:
             self.__smoothing += self.__smoothing_factor
 
-        speed_score = observation[21] * np.cos(observation[0] * np.pi)
+        speed_score = observation[21] * (self.__theta * (np.cos(observation[0] * np.pi) - np.abs(np.sin(observation[0] * np.pi))) + 1 - self.__theta)
+        if self.__theta > 0:
+            self.__theta -= self.__theta_decay
+        else:
+            self.__theta = 0
 
-        progress_penalty = (speed_score - self.__previous_speed) / (speed_score + self.__alpha) - 1
+        progress_penalty = (observation[21] - self.__previous_speed) * 100 / (observation[21] + self.__alpha) - 1
+        progress_penalty *= self.__theta**2
 
-        r = positioning_score + self.__speed_weight * speed_score + progress_penalty
-        print(progress_penalty)
-        self.__previous_speed = speed_score
+        r = positioning_score + self.__speed_weight * speed_score + progress_penalty + 100 * positioning_score * observation[0]
+        self.__previous_speed = observation[21]
         return r
 
 
@@ -46,7 +49,7 @@ class DDPGTorcs:
         observation_input = Input(shape=(1,) + env.observation_space.shape)
         h0 = Dense(300, activation='relu')(Flatten()(observation_input))
         h1 = Dense(600, activation='relu')(h0)
-        output = Dense(2, activation='tanh')(h1)
+        output = Dense(env.action_space.shape[0], activation='tanh')(h1)
         return Model(input=observation_input, output=output)
 
     @staticmethod
@@ -68,9 +71,9 @@ class DDPGTorcs:
 
     @staticmethod
     def __run(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1',
-              verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False):
+              verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=ProgressiveSmoothingReward().reward)
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track)
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -86,7 +89,7 @@ class DDPGTorcs:
                           actor=actor, critic=critic,
                           critic_action_input=action_input,
                           memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                          random_process=random_process, gamma=GAMMA, target_model_update=TAU, epsilon=EPSILON)
+                          random_process=random_process, gamma=GAMMA, target_model_update=TAU, epsilon=epsilon)
 
         agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
 
@@ -106,15 +109,16 @@ class DDPGTorcs:
 
     @staticmethod
     def train(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1',
-              verbose=0, nb_steps=50000, nb_max_episode_steps=10000):
+              verbose=0, nb_steps=50000, nb_max_episode_steps=10000, epsilon=1.0):
 
         DDPGTorcs.__run(load=load, save=save, gui=gui, file_path=file_path, timeout=timeout, track=track,
-                        verbose=verbose, nb_steps=nb_steps, nb_max_episode_steps=nb_max_episode_steps, train=True)
+                        verbose=verbose, nb_steps=nb_steps, nb_max_episode_steps=nb_max_episode_steps, train=True,
+                        epsilon=epsilon)
 
     @staticmethod
-    def test(file_path, track='g-track-1'):
+    def test(file_path, track='g-track-1', epsilon=1.0):
         DDPGTorcs.__run(load=True, gui=True, file_path=file_path, track=track, nb_steps=1,
-                        nb_max_episode_steps=int(1e08))
+                        nb_max_episode_steps=int(1e08), epsilon=epsilon)
 
 
 class ExplorationNoise:
@@ -127,11 +131,22 @@ class ExplorationNoise:
 
     def sample(self):
         self.__noise -= self.__step
-        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0],
-                                                         self.__accel_brake.sample()[0]])
+        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0], self.__accel_brake.sample()[0]])
 
 
 if __name__ == "__main__":
-    DDPGTorcs.train(load=False, gui=True, save=True, file_path='trained_networks/weights_new_reward.h5f',
-                    verbose=0)
-    #DDPGTorcs.test('trained_networks/weights.h5f', track='aalborg')
+
+    DDPGTorcs.train(load=False, gui=True, save=True,
+                    file_path='trained_networks/gear_test01.h5f', verbose=0)
+    # DDPGTorcs.test('trained_networks/weights.h5f')
+
+    # epsilon = 1.0
+
+    # tracks = [track for track in TRACK_LIST]
+    # np.random.shuffle(tracks)
+    # epsilon = 1.0
+    #
+    # for i, track in enumerate(tracks):
+    #     DDPGTorcs.train(load=True, gui=True, save=True, file_path='trained_networks/gear_test01.h5f',
+    #                     track=track, verbose=0, epsilon=epsilon)
+    #     epsilon = 1.0 - float(i + 1) / len(tracks)

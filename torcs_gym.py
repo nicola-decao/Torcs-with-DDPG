@@ -58,6 +58,10 @@ class TorcsEnv(Env):
         self.client = self.Client(self.server, host, port, sid)
         self.__terminal_judge_start = 500
         self.__termination_limit_progress = 20
+        self.__gearUp = (9000, 8500, 8500, 8000, 8000, 0)
+        self.__gearDown = (0, 3500, 4000, 4000, 4500, 4500)
+        self.__gear = 0
+        self.__last_rmp = 0
         self.__time_stop = 0
 
         if reward:
@@ -74,11 +78,14 @@ class TorcsEnv(Env):
         else:
             self.server.restart()
         self.client.restart()
+        self.__gear = 0
+        self.__last_rmp = 0
         self.__time_stop = 0
         time.sleep(0.1)
         return self.__encode_state_data(self.client.step())
 
-    def __default_reward(self, observation):
+    @staticmethod
+    def __default_reward(observation):
         if np.abs(observation[20]) > 0.99:
             return -200
         else:
@@ -96,9 +103,28 @@ class TorcsEnv(Env):
         return self.__time_stop > self.__terminal_judge_start or np.abs(observation[20]) > 0.99
 
     def _step(self, action):
-        self.__t = time.time()
         a = self.__decode_action_data(action)
+
+        change_gear = False
+        if self.__gear < 1:
+            self.__gear = 1
+        elif self.__gear < 6 and self.__last_rmp >= self.__gearUp[self.__gear - 1]:
+            self.__gear += 1
+            change_gear = True
+        else:
+            if self.__gear > 1 and self.__last_rmp <= self.__gearDown[self.__gear - 1]:
+                self.__gear -= 1
+                change_gear = True
+
+        a['gear'] = self.__gear
+
         sensors = self.client.step(a)
+
+        if change_gear:
+            self.__last_rmp = 5000
+        else:
+            self.__last_rmp = sensors['rpm']
+
         observation = self.__encode_state_data(sensors)
         reward = self.__reward(observation)
         done = self.__check_done(observation)
@@ -108,15 +134,16 @@ class TorcsEnv(Env):
     def __decode_action_data(actions_vec):
         actions_dic = TorcsEnv.Client.get_empty_actions()
         actions_dic['steer'] = actions_vec[0]
+
         if actions_vec[1] >= 0:
             actions_dic['accel'] = actions_vec[1]
         else:
             actions_dic['brake'] = -actions_vec[1]
+
         return actions_dic
 
-    @staticmethod
-    def __encode_state_data(sensors):
-        state = np.empty(29)
+    def __encode_state_data(self, sensors):
+        state = np.empty(self.observation_space.shape[0])
         state[0] = sensors['angle']
         state[1:20] = np.array(sensors['track']) / 200.0
         state[20] = sensors['trackPos'] / 1.0
