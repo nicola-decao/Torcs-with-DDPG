@@ -12,33 +12,22 @@ TAU = 1e-3
 
 
 class ProgressiveSmoothingReward:
-    def __init__(self, reward_off_road=-40.0, smoothing_factor=1e-05, max_smoothing=40,
-                 speed_weight=10.0, smoothing=1.0, theta=1.0):
-        self.__reward_off_road = reward_off_road
+    def __init__(self, smoothing_factor=1e-05, max_smoothing=40, smoothing=1.0):
         self.__smoothing_factor = smoothing_factor
         self.__smoothing = smoothing
         self.__max_smoothing = max_smoothing
-        self.__speed_weight = speed_weight
         self.__alpha = 1.0
-        self.__theta = theta
         self.__theta_decay = 1e-6
         self.__previous_speed = 0
 
     def reward(self, observation):
-        positioning_score = - (np.abs(observation[20]) ** self.__smoothing) * (- self.__reward_off_road)
+        positioning_score = - (np.abs(observation[20]) ** self.__smoothing) * (- np.abs(np.sin(observation[0])))
         if self.__max_smoothing > self.__smoothing:
             self.__smoothing += self.__smoothing_factor
 
-        speed_score = observation[21] * (self.__theta * (np.cos(observation[0] * np.pi) - np.abs(np.sin(observation[0] * np.pi))) + 1 - self.__theta)
-        if self.__theta > 0:
-            self.__theta -= self.__theta_decay
-        else:
-            self.__theta = 0
+        speed_score = observation[21]
 
-        progress_penalty = (observation[21] - self.__previous_speed) * 100 / (observation[21] + self.__alpha) - 1
-        progress_penalty *= self.__theta**2
-
-        r = positioning_score + self.__speed_weight * speed_score + progress_penalty + 100 * positioning_score * observation[0]
+        r = positioning_score + speed_score
         self.__previous_speed = observation[21]
         return r
 
@@ -137,7 +126,7 @@ class ExplorationNoise:
 if __name__ == "__main__":
 
     DDPGTorcs.train(load=False, gui=True, save=True,
-                    file_path='trained_networks/gear_test01.h5f', verbose=0)
+                    file_path='trained_networks/reward_test.h5f', verbose=1, timeout=40000)
     # DDPGTorcs.test('trained_networks/weights.h5f')
 
     # epsilon = 1.0
