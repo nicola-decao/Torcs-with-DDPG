@@ -90,8 +90,8 @@ class TorcsEnv(Env):
             return -200
         else:
             return sensors['speedX'] * (
-                np.cos(sensors['angle'] * np.pi)
-                - np.abs(np.sin(sensors['angle'] * np.pi))
+                np.cos(sensors['angle'])
+                - np.abs(np.sin(sensors['angle']))
                 - np.abs(sensors['trackPos']))
 
     def __check_done(self, sensors):
@@ -144,7 +144,7 @@ class TorcsEnv(Env):
 
     def __encode_state_data(self, sensors):
         state = np.empty(self.observation_space.shape[0])
-        state[0] = sensors['angle']
+        state[0] = sensors['angle'] / np.pi
         state[1:20] = np.array(sensors['track']) / 200.0
         state[20] = sensors['trackPos'] / 1.0
         state[21] = sensors['speedX'] / 300.0
