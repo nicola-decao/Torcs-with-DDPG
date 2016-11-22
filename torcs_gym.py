@@ -85,22 +85,22 @@ class TorcsEnv(Env):
         return self.__encode_state_data(self.client.step())
 
     @staticmethod
-    def __default_reward(observation):
-        if np.abs(observation[20]) > 0.99:
+    def __default_reward(sensors):
+        if np.abs(sensors['trackPos']) > 0.99:
             return -200
         else:
-            return 300 * observation[21] * (
-                np.cos(observation[0] * np.pi)
-                - np.abs(np.sin(observation[0] * np.pi))
-                - np.abs(observation[20]))
+            return sensors['speedX'] * (
+                np.cos(sensors['angle'] * np.pi)
+                - np.abs(np.sin(sensors['angle'] * np.pi))
+                - np.abs(sensors['trackPos']))
 
-    def __check_done(self, observation):
-        if 300 * observation[21] < self.__termination_limit_progress:
+    def __check_done(self, sensors):
+        if sensors['speedX'] < self.__termination_limit_progress:
             self.__time_stop += 1
         else:
             self.__time_stop = 0
 
-        return self.__time_stop > self.__terminal_judge_start or np.abs(observation[20]) > 0.99
+        return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99
 
     def _step(self, action):
         a = self.__decode_action_data(action)
@@ -126,8 +126,8 @@ class TorcsEnv(Env):
             self.__last_rmp = sensors['rpm']
 
         observation = self.__encode_state_data(sensors)
-        reward = self.__reward(observation)
-        done = self.__check_done(observation)
+        reward = self.__reward(sensors)
+        done = self.__check_done(sensors)
         return observation, reward, done, {}
 
     @staticmethod
