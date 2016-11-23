@@ -186,11 +186,11 @@ class TorcsEnv(Env):
                 os.system('sh autostart.sh')
             else:
                 os.system('torcs -nofuel nodamage -nolaptime -r ' + self.__quickrace_xml_path + ' >/dev/null &')
-            print('Server created!')
+            #print('Server created!')
             time.sleep(0.1)
 
         def restart(self):
-            print('Restarting __server...')
+            #print('Restarting __server...')
             os.system('pkill torcs')
             time.sleep(0.2)
             self.__init_server()
@@ -264,15 +264,15 @@ class TorcsEnv(Env):
                     sockdata, address = self.__socket.recvfrom(self.__data_size)
                     sockdata = sockdata.decode('utf-8')
                 except socket.error:
-                    print("Waiting for __server on __port " + str(self.__port))
+                    #print("Waiting for __server on __port " + str(self.__port))
                     tries -= 1
                     if tries == 0:
-                        print("Server didn't answer, sending restart signal")
+                        #print("Server didn't answer, sending restart signal")
                         self.__server.restart()
 
                 identify = '***identified***'
                 if identify in sockdata:
-                    print("Client connected on __port " + str(self.__port))
+                    #print("Client connected on __port " + str(self.__port))
                     break
 
         @staticmethod

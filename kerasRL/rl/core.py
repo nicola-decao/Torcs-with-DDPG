@@ -6,6 +6,11 @@ from keras.callbacks import History
 from kerasRL.rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLogger, Visualizer, CallbackList
 
 
+def write_reward(episode_reward, steps):
+    with open('rewards.csv', 'a') as f:
+        f.write("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward/steps) + '\n')
+
+
 class Agent(object):
     def __init__(self):
         self.training = False
@@ -128,6 +133,7 @@ class Agent(object):
                         'nb_episode_steps': episode_step,
                         'nb_steps': self.step,
                     }
+                    write_reward(episode_reward, episode_step)
                     callbacks.on_episode_end(episode, episode_logs)
 
                     episode += 1
