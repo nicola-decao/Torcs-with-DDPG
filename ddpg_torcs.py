@@ -128,7 +128,8 @@ class DDPGTorcs:
             agent.fit(env, nb_steps=nb_steps, visualize=False, verbose=verbose,
                       nb_max_episode_steps=nb_max_episode_steps)
         else:
-            agent.test(env, visualize=False)
+            agent.test(env, visualize=False, nb_max_episode_steps=nb_max_episode_steps)
+            return env.did_one_lap()
 
         if save:
             print('Saving..')
@@ -145,9 +146,9 @@ class DDPGTorcs:
                         epsilon=epsilon)
 
     @staticmethod
-    def test(load_file_path, track='g-track-1', epsilon=1.0):
-        DDPGTorcs.__run(load=True, gui=True, load_file_path=load_file_path, track=track, nb_steps=1,
-                        nb_max_episode_steps=int(1e08), epsilon=epsilon)
+    def test(load_file_path, track='g-track-1', gui=False, nb_max_episode_steps=10000):
+        return DDPGTorcs.__run(load=True, gui=gui, load_file_path=load_file_path, track=track,
+                               epsilon=0, nb_max_episode_steps=nb_max_episode_steps)
 
 
 class ExplorationNoise:
@@ -210,6 +211,10 @@ def save_last_network_path(last_network_file_path, save_file_path, i):
 
 
 if __name__ == "__main__":
+
+    # DDPGTorcs.test('/home/nicola/Torcs_py/trained_networks/test_0_street-1_0.5.h5f',
+    #                'g-track-1', gui=False, nb_max_episode_steps=10000)
+
     # This is used if you want to restart everything but you want to have a trained network at the start
     start_with_trained_network = False
 
@@ -251,5 +256,3 @@ if __name__ == "__main__":
             save_last_network_path(last_network_file_path, save_file_path, i)
             with open('rewards.csv', 'a') as f:
                 f.write('\n')
-
-    # DDPGTorcs.test('trained_networks/reward_test.h5f', 'g-track-1')
