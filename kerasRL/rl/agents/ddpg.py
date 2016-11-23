@@ -22,7 +22,7 @@ class DDPGAgent(Agent):
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=(-np.inf, np.inf), processor=None,
                  random_process=OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=0.3),
-                 custom_model_objects={}, target_model_update=.001, epsilon=1.0):
+                 custom_model_objects={}, target_model_update=.001):
         if hasattr(actor.output, '__len__') and len(actor.output) > 1:
             raise ValueError('Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
         if hasattr(actor.input, '__len__') and len(actor.input) != 1:
@@ -219,7 +219,7 @@ class DDPGAgent(Agent):
 
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
-            noise = self.random_process.sample()
+            noise = self.random_process.sample(state)
             assert noise.shape == action.shape
             action += noise
 

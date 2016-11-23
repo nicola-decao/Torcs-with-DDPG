@@ -62,7 +62,7 @@ class DDPGTorcs:
     def __run(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track)
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=ProgressiveSmoothingReward().reward)
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -70,15 +70,15 @@ class DDPGTorcs:
         memory = SequentialMemory(limit=100000, window_length=1)
 
         random_process = ExplorationNoise(nb_steps=nb_steps,
-                                          epsilon=0.3,
-                                          steer=OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.3),
-                                          accel_brake=OrnsteinUhlenbeckProcess(theta=1.0, mu=0.5, sigma=0.3))
+                                          epsilon=epsilon,
+                                          steer=OrnsteinUhlenbeckProcess(theta=0.3, mu=0, sigma=0.1),
+                                          accel_brake=OrnsteinUhlenbeckProcess(theta=0.5, mu=0.4, sigma=0.1))
 
         agent = DDPGAgent(nb_actions=env.action_space.shape[0],
                           actor=actor, critic=critic,
                           critic_action_input=action_input,
                           memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                          random_process=random_process, gamma=GAMMA, target_model_update=TAU, epsilon=epsilon)
+                          random_process=random_process, gamma=GAMMA, target_model_update=TAU)
 
         agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
 
@@ -118,15 +118,14 @@ class ExplorationNoise:
         self.__accel_brake = accel_brake
         self.__noise = 1
 
-    def sample(self):
+    def sample(self, state):
         self.__noise -= self.__step
-        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0], self.__accel_brake.sample()[0]])
+        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0] * (1 - state[0, 21] / 150), self.__accel_brake.sample()[0]])
 
 
 if __name__ == "__main__":
-
     DDPGTorcs.train(load=False, gui=True, save=True,
-                    file_path='trained_networks/reward_test.h5f', verbose=1, timeout=40000)
+                    file_path='trained_networks/reward_test.h5f', verbose=0, timeout=40000, epsilon=1.0)
     # DDPGTorcs.test('trained_networks/weights.h5f')
 
     # epsilon = 1.0
