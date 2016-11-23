@@ -87,12 +87,13 @@ class TorcsEnv(Env):
     @staticmethod
     def __default_reward(sensors):
         if np.abs(sensors['trackPos']) > 0.99:
-            return -200
+            reward = -200
         else:
-            return sensors['speedX'] * (
+            reward = sensors['speedX'] * (
                 np.cos(sensors['angle'])
                 - np.abs(np.sin(sensors['angle']))
                 - np.abs(sensors['trackPos']))
+        return reward
 
     def __check_done(self, sensors):
         if sensors['speedX'] < self.__termination_limit_progress:
@@ -133,7 +134,12 @@ class TorcsEnv(Env):
     @staticmethod
     def __decode_action_data(actions_vec):
         actions_dic = TorcsEnv.Client.get_empty_actions()
-        actions_dic['steer'] = actions_vec[0]
+        if actions_vec[0] >= 1:
+            actions_vec[0] = 0.9999
+        elif actions_vec[0] <= -1:
+            actions_vec[0] = -0.9999
+        steering = np.tanh(np.arctanh(actions_vec[0])/2)
+        actions_dic['steer'] = steering
 
         if actions_vec[1] >= 0:
             actions_dic['accel'] = actions_vec[1]
@@ -173,13 +179,13 @@ class TorcsEnv(Env):
             time.sleep(0.1)
             if self.__gui:
                 if self.__cmd_exists('optirun'):
-                    os.system('optirun torcs -nofuel -nodamage -nolaptime -t {} &'.format(self.__timeout))
+                    os.system('optirun torcs -nofuel -nodamage -nolaptime -t {} >/dev/null &'.format(self.__timeout))
                 else:
-                    os.system('torcs -nofuel -nodamage -nolaptime -t {} &'.format(self.__timeout))
+                    os.system('torcs -nofuel -nodamage -nolaptime -t {} >/dev/null &'.format(self.__timeout))
                 time.sleep(2)
                 os.system('sh autostart.sh')
             else:
-                os.system('torcs -nofuel nodamage -nolaptime -r ' + self.__quickrace_xml_path + ' &')
+                os.system('torcs -nofuel nodamage -nolaptime -r ' + self.__quickrace_xml_path + ' >/dev/null &')
             print('Server created!')
             time.sleep(0.1)
 

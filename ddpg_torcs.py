@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 from keras.layers import Dense, Flatten, Input, merge
 from keras.models import Model
@@ -6,6 +8,7 @@ from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from torcs_gym import TorcsEnv, TRACK_LIST
+import os
 
 GAMMA = 0.99
 TAU = 1e-3
@@ -31,6 +34,29 @@ class ProgressiveSmoothingReward:
         self.__previous_speed = observation[21]
         return r
 
+
+class HitReward:
+    def __init__(self, timeout):
+        self.__mult_factor = timeout / 1000000
+        self.__lastDFS = 0
+        self.__last_diff = 0
+
+    def reward(self, sensors):
+        diff = (sensors['distFromStart'] - self.__lastDFS) / self.__mult_factor
+        if diff > 10 or diff < 0:
+            diff = self.__last_diff
+        self.__last_diff = diff
+
+        self.__lastDFS = sensors['distFromStart']
+
+        if np.abs(sensors['trackPos']) > 0.99:
+            reward = -200
+        else:
+            reward = diff * (
+                np.cos(sensors['angle'])
+                - np.abs(np.sin(sensors['angle']))
+                - np.abs(sensors['trackPos']))
+        return reward
 
 class DDPGTorcs:
     @staticmethod
@@ -62,7 +88,7 @@ class DDPGTorcs:
     def __run(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track)
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=HitReward(timeout).reward)
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -70,7 +96,7 @@ class DDPGTorcs:
         memory = SequentialMemory(limit=100000, window_length=1)
 
         random_process = ExplorationNoise(nb_steps=nb_steps,
-                                          epsilon=0.3,
+                                          epsilon=epsilon,
                                           steer=OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.3),
                                           accel_brake=OrnsteinUhlenbeckProcess(theta=1.0, mu=0.5, sigma=0.3))
 
@@ -78,7 +104,7 @@ class DDPGTorcs:
                           actor=actor, critic=critic,
                           critic_action_input=action_input,
                           memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                          random_process=random_process, gamma=GAMMA, target_model_update=TAU, epsilon=epsilon)
+                          random_process=random_process, gamma=GAMMA, target_model_update=TAU)
 
         agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
 
@@ -98,7 +124,7 @@ class DDPGTorcs:
 
     @staticmethod
     def train(load=False, save=False, gui=True, file_path='', timeout=10000, track='g-track-1',
-              verbose=0, nb_steps=50000, nb_max_episode_steps=10000, epsilon=1.0):
+              verbose=0, nb_steps=30000, nb_max_episode_steps=10000, epsilon=1.0):
 
         DDPGTorcs.__run(load=load, save=save, gui=gui, file_path=file_path, timeout=timeout, track=track,
                         verbose=verbose, nb_steps=nb_steps, nb_max_episode_steps=nb_max_episode_steps, train=True,
@@ -118,24 +144,50 @@ class ExplorationNoise:
         self.__accel_brake = accel_brake
         self.__noise = 1
 
-    def sample(self):
+    def sample(self, state):
         self.__noise -= self.__step
-        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0], self.__accel_brake.sample()[0]])
+        ab = self.__accel_brake.sample()[0]
+        if ab >= 0:
+            ab /= 1+state[0, 20]/200
+        else:
+            ab *= state[0, 20]/200
+        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0]*(1-state[0, 20]/200), ab])
+
+
+def create_tracks_list(epsilons):
+    tracks = {}
+    for epsilon in epsilons:
+        tracks[str(epsilon)] = []
+    for epsilon in epsilons:
+        for track in TRACK_LIST.keys():
+            if TRACK_LIST[track] != 'dirt':
+                tracks[str(epsilon)].append(track)
+    return tracks
+
+
+def save_remaining_tracks(tracks):
+    with open('tracks_to_test.json', 'w+') as f:
+        json.dump(tracks, f, sort_keys=True, indent=4)
+
+
+def load_tracks(filename):
+    with open('tracks_to_test.json', 'r') as f:
+        return json.load(f)
 
 
 if __name__ == "__main__":
+    epsilons = [0.3, 0.05, 0.0001, 0]
+    track_filename = 'tracks_to_test.json'
 
-    DDPGTorcs.train(load=False, gui=True, save=True,
-                    file_path='trained_networks/reward_test.h5f', verbose=1, timeout=40000)
-    # DDPGTorcs.test('trained_networks/weights.h5f')
+    if os.path.isfile(track_filename):
+        tracks = load_tracks(track_filename)
+    else:
+        tracks = create_tracks_list(epsilons)
 
-    # epsilon = 1.0
-
-    # tracks = [track for track in TRACK_LIST]
-    # np.random.shuffle(tracks)
-    # epsilon = 1.0
-    #
-    # for i, track in enumerate(tracks):
-    #     DDPGTorcs.train(load=True, gui=True, save=True, file_path='trained_networks/gear_test01.h5f',
-    #                     track=track, verbose=0, epsilon=epsilon)
-    #     epsilon = 1.0 - float(i + 1) / len(tracks)
+    for epsilon in epsilons:
+        while len(tracks[str(epsilon)]) > 0:
+            DDPGTorcs.train(load=True, gui=True, save=True, track=tracks[str(epsilon)][0],
+                            file_path='trained_networks/reward_test.h5f', verbose=0, timeout=40000, epsilon=epsilon)
+            tracks[str(epsilon)].remove(tracks[str(epsilon)][0])
+            save_remaining_tracks(tracks)
+    # DDPGTorcs.test('trained_networks/reward_test.h5f', 'g-track-1')
