@@ -37,8 +37,7 @@ class ProgressiveSmoothingReward:
 
 
 class HitReward:
-    def __init__(self, timeout):
-        self.__mult_factor = timeout / 1000000
+    def __init__(self):
         self.__lastDFS = 0
         self.__last_diff = 0
         self.__last_time = 0
@@ -50,26 +49,25 @@ class HitReward:
         else:
             time_diff = current_time - self.__last_time
 
-        diff = (sensors['distFromStart'] - self.__lastDFS) / self.__mult_factor
+        diff = (sensors['distFromStart'] - self.__lastDFS)
         if diff > 10 or diff < 0:
             diff = self.__last_diff
         self.__last_diff = diff
 
         self.__lastDFS = sensors['distFromStart']
-
-        if np.abs(sensors['trackPos']) > 0.99:
+        if time_diff == 0:
+            reward = 0
+        elif np.abs(sensors['trackPos']) > 0.99:
             reward = -200
-        elif sensors['speedX'] < 10:
-            reward = (-10 + sensors['speedX']) / 10
+        elif sensors['speedX'] == 0:
+            reward = -2
         else:
-            reward = diff * (
+            reward = diff / time_diff * (
                 np.cos(sensors['angle'])
                 - np.abs(np.sin(sensors['angle']))
-                - np.abs(sensors['trackPos']) ** 3)
+                - np.abs(sensors['trackPos']) ** 5)
 
         self.__last_time = current_time
-        reward *= time_diff
-        reward *= 100
         return reward
 
 
@@ -103,7 +101,7 @@ class DDPGTorcs:
     def __run(load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000, track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=HitReward(timeout).reward)
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=HitReward().reward)
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -213,7 +211,7 @@ def save_last_network_path(last_network_file_path, save_file_path, i):
 
 if __name__ == "__main__":
     # This is used if you want to restart everything but you want to have a trained network at the start
-    start_with_trained_network = True
+    start_with_trained_network = False
 
     epsilons = [0.5, 0.3, 0.1, 0]
     tracks_to_test = 'tracks_to_test.json'

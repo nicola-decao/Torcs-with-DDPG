@@ -56,7 +56,7 @@ class TorcsEnv(Env):
         self.gui = gui
         self.server = self.Server(track, TRACK_LIST[track], gui, timeout=timeout)
         self.client = self.Client(self.server, host, port, sid)
-        self.__terminal_judge_start = 500
+        self.__terminal_judge_start = 250
         self.__termination_limit_progress = 20
         self.__gearUp = (9000, 8500, 8500, 8000, 8000, 0)
         self.__gearDown = (0, 3500, 4000, 4000, 4500, 4500)
