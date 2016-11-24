@@ -162,10 +162,10 @@ class ExplorationNoise:
         self.__noise -= self.__step
         ab = self.__accel_brake.sample()[0]
         if ab >= 0:
-            ab /= 1 + state[0, 20] / 200
+            ab /= 1 + state[0, 21] / 200
         else:
-            ab *= state[0, 20] / 200
-        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0] * (1 - state[0, 20] / 200), ab])
+            ab *= state[0, 21] / 200
+        return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0] * (1 - state[0, 21] / 200), ab])
 
 
 def create_tracks_list(epsilons):
