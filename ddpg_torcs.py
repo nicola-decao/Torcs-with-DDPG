@@ -201,7 +201,7 @@ def load_tracks(track_filename, epsilons):
 def load_last_network_path(track_filename):
     if os.path.isfile(track_filename):
         with open(track_filename) as f:
-            network_name = f.readline()
+            network_name = f.readline().replace('\n', '')
             i = f.readline()
             return network_name, int(i)
     else:
@@ -253,7 +253,7 @@ def train_on_multiple_tracks():
                 print(tracks[str(epsilon)][0], file=f)
 
             try:
-                DDPGTorcs.train(load=True, gui=False, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
+                DDPGTorcs.train(load=True, gui=True, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
                                 load_file_path=load_file_path, save_file_path=save_file_path, verbose=1, timeout=40000,
                                 epsilon=epsilon)
 
@@ -291,4 +291,4 @@ def train_on_single_track(track):
 
 if __name__ == "__main__":
     train_on_multiple_tracks()
-    #train_on_single_track('aalborg')
+    # train_on_single_track('aalborg')
