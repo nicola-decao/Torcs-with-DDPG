@@ -113,7 +113,6 @@ class TorcsEnv(Env):
             self.__time_stop += 1
         else:
             self.__time_stop = 0
-
         return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99
 
     def _step(self, action):
@@ -193,13 +192,13 @@ class TorcsEnv(Env):
             time.sleep(0.1)
             if self.__gui:
                 if self.__cmd_exists('optirun'):
-                    os.system('optirun torcs -nofuel -nodamage -nolaptime -t {} >/dev/null &'.format(self.__timeout))
+                    os.system('optirun torcs -nofuel -nolaptime -t {} >/dev/null &'.format(self.__timeout))
                 else:
-                    os.system('torcs -nofuel -nodamage -nolaptime -t {} >/dev/null &'.format(self.__timeout))
+                    os.system('torcs -nofuel -nolaptime -t {} >/dev/null &'.format(self.__timeout))
                 time.sleep(2)
                 os.system('sh autostart.sh')
             else:
-                os.system('torcs -nofuel nodamage -nolaptime -r ' + self.__quickrace_xml_path + ' >/dev/null &')
+                os.system('torcs -nofuel -nolaptime -r ' + self.__quickrace_xml_path + ' >/dev/null &')
             # print('Server created!')
             time.sleep(0.1)
 

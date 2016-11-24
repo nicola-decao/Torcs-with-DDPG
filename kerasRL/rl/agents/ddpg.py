@@ -188,18 +188,30 @@ class DDPGAgent(Agent):
         filename, extension = os.path.splitext(filepath)
         actor_filepath = filename + '_actor' + extension
         critic_filepath = filename + '_critic' + extension
-        if os.path.exists(actor_filepath):
+        target_actor_filepath = filename + '_target_actor' + extension
+        target_critic_filepath = filename + '_target_critic' + extension
+
+        if os.path.exists(actor_filepath) and os.path.exists(critic_filepath):
             self.actor.load_weights(actor_filepath)
-        if os.path.exists(critic_filepath):
             self.critic.load_weights(critic_filepath)
-        self.update_target_models_hard()
+
+        if os.path.exists(target_actor_filepath) and os.path.exists(target_critic_filepath):
+            self.target_actor.load_weights(target_actor_filepath)
+            self.target_critic.load_weights(target_critic_filepath)
+        else:
+            self.target_actor.set_weights(self.actor.get_weights())
+            self.target_critic.set_weights(self.critic.get_weights())
 
     def save_weights(self, filepath, overwrite=False):
         filename, extension = os.path.splitext(filepath)
         actor_filepath = filename + '_actor' + extension
         critic_filepath = filename + '_critic' + extension
+        target_actor_filepath = filename + '_target_actor' + extension
+        target_critic_filepath = filename + '_target_critic' + extension
         self.actor.save_weights(actor_filepath, overwrite=overwrite)
         self.critic.save_weights(critic_filepath, overwrite=overwrite)
+        self.target_actor.save_weights(target_actor_filepath, overwrite=overwrite)
+        self.target_critic.save_weights(target_critic_filepath, overwrite=overwrite)
 
     def update_target_models_hard(self):
         self.target_critic.set_weights(self.critic.get_weights())

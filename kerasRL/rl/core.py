@@ -6,12 +6,6 @@ from keras.callbacks import History
 from kerasRL.rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLogger, Visualizer, CallbackList
 
 
-def write_reward(episode_reward, steps):
-    with open('rewards.csv', 'a') as f:
-        print("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward / steps),
-              file=f)
-
-
 class Agent(object):
     def __init__(self):
         self.training = False
@@ -20,7 +14,7 @@ class Agent(object):
     def get_config(self):
         return {}
 
-    def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
+    def fit(self, env, reward_writer, nb_steps, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
             nb_max_episode_steps=None):
         if not self.compiled:
@@ -137,7 +131,7 @@ class Agent(object):
                         'nb_episode_steps': episode_step,
                         'nb_steps': self.step,
                     }
-                    write_reward(episode_reward, episode_step)
+                    reward_writer.write_reward(episode_reward, episode_step)
                     callbacks.on_episode_end(episode, episode_logs)
 
                     episode += 1

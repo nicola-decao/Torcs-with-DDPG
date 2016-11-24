@@ -10,6 +10,7 @@ from keras.optimizers import Adam
 from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
+from reward_writer import RewardWriter
 from torcs_gym import TorcsEnv, TRACK_LIST
 
 GAMMA = 0.99
@@ -60,6 +61,8 @@ class HitReward:
             reward = 0
         elif np.abs(sensors['trackPos']) > 0.99:
             reward = -200
+        elif sensors['damage'] > 0:
+            reward = -100
         elif sensors['speedX'] < 1:
             reward = -2
         else:
@@ -102,7 +105,7 @@ class DDPGTorcs:
         np.savetxt(filename, np.array(r))
 
     @staticmethod
-    def __run(load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000, track='g-track-1',
+    def __run(reward_writer, load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000, track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0):
 
         env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=HitReward().reward)
@@ -124,12 +127,10 @@ class DDPGTorcs:
                           random_process=random_process, gamma=GAMMA, target_model_update=TAU)
 
         agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
-
         if load:
             agent.load_weights(load_file_path)
-
         if train:
-            agent.fit(env, nb_steps=nb_steps, visualize=False, verbose=verbose,
+            agent.fit(env, reward_writer, nb_steps=nb_steps, visualize=False, verbose=verbose,
                       nb_max_episode_steps=nb_max_episode_steps)
         else:
             agent.test(env, visualize=False, nb_max_episode_steps=nb_max_episode_steps)
@@ -141,10 +142,10 @@ class DDPGTorcs:
             print('Saved!')
 
     @staticmethod
-    def train(load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000, track='g-track-1',
+    def train(reward_writer, load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000, track='g-track-1',
               verbose=0, nb_steps=30000, nb_max_episode_steps=10000, epsilon=1.0):
 
-        DDPGTorcs.__run(load=load, save=save, gui=gui, load_file_path=load_file_path, save_file_path=save_file_path,
+        DDPGTorcs.__run(reward_writer, load=load, save=save, gui=gui, load_file_path=load_file_path, save_file_path=save_file_path,
                         timeout=timeout, track=track,
                         verbose=verbose, nb_steps=nb_steps, nb_max_episode_steps=nb_max_episode_steps, train=True,
                         epsilon=epsilon)
@@ -173,7 +174,7 @@ class ExplorationNoise:
         return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0] * (1 - state[0, 21] / 300), ab])
 
 
-def create_tracks_list(epsilons):
+def create_complete_tracks_list(epsilons):
     tracks = {}
     for epsilon in epsilons:
         tracks[str(epsilon)] = []
@@ -190,12 +191,12 @@ def save_remaining_tracks(tracks):
         json.dump(tracks, f, sort_keys=True, indent=4)
 
 
-def load_tracks(track_filename, epsilons):
+def load_tracks(track_filename):
     if os.path.isfile(track_filename):
         with open(track_filename, 'r') as f:
             return json.load(f)
     else:
-        return create_tracks_list(epsilons)
+        return False
 
 
 def load_last_network_path(track_filename):
@@ -219,7 +220,7 @@ def order_tracks(tracks):
         tracks[key].sort()
 
 
-def train_on_multiple_tracks():
+def train_on_all_tracks():
     # This is used if you want to restart everything but you want to have a trained network at the start
     start_with_trained_network = False
 
@@ -228,7 +229,11 @@ def train_on_multiple_tracks():
     file_path = 'trained_networks/test_'
     last_network_file_path = 'trained_networks/last_network.txt'
 
-    tracks = load_tracks(tracks_to_test, epsilons)
+    reward_writer = RewardWriter('rewards.csv')
+
+    tracks = load_tracks(tracks_to_test)
+    if not tracks:
+        tracks = create_complete_tracks_list(epsilons)
     order_tracks(tracks)
 
     # load the right network
@@ -242,45 +247,46 @@ def train_on_multiple_tracks():
 
     for epsilon in epsilons:
         while len(tracks[str(epsilon)]) > 0:
+            track = tracks[str(epsilon)][0]
+
             if i != 0:
                 load_file_path = save_file_path
-            save_file_path = file_path + str(i) + '_' + tracks[str(epsilon)][0] + '_' + str(epsilon) + '.h5f'
+            save_file_path = file_path + str(i) + '_' + track + '_' + str(epsilon) + '.h5f'
 
-            print('track: ' + tracks[str(epsilon)][0])
+            print('Track name:', track)
+            print('Epsilon:', epsilon)
+            print()
 
             # write track name
-            with open('rewards.csv', 'a') as f:
-                print(tracks[str(epsilon)][0], file=f)
+            reward_writer.write_track(track)
 
             try:
-                DDPGTorcs.train(load=True, gui=True, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
+                DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track, nb_steps=100000,
                                 load_file_path=load_file_path, save_file_path=save_file_path, verbose=1, timeout=40000,
                                 epsilon=epsilon)
 
                 i += 1
-                tracks[str(epsilon)].remove(tracks[str(epsilon)][0])
+                tracks[str(epsilon)].remove(track)
                 save_remaining_tracks(tracks)
                 save_last_network_path(last_network_file_path, save_file_path, i)
 
-                with open('rewards.csv', 'a') as f:
-                    print('', file=f)
+                reward_writer.completed_track()
             except:
                 # Torcs fucked up, so now we fix everything
                 save_file_path = load_file_path
-                with open('rewards.csv', 'a') as f:
-                    print('BAD RUN BAD RUN BAD RUN BAD RUN', file=f)
-                    print('', file=f)
+                reward_writer.bad_run()
+                reward_writer.completed_track()
 
 
 def train_on_single_track(track):
     epsilon = 0.5
-    gui = True
-    load = False
+    gui = False
+    load = True
     save = True
     steps = 500000
 
     if load:
-        load_file_path = 'trained_networks/pre_trained.h5f'
+        load_file_path = 'trained_networks/single_track.h5f'
     else:
         load_file_path = ''
     save_file_path = 'trained_networks/single_track.h5f'
@@ -289,6 +295,64 @@ def train_on_single_track(track):
                     save_file_path=save_file_path, verbose=1, timeout=40000, epsilon=epsilon)
 
 
+def create_tracks_list(chosen_tracks, epsilons):
+    tracks = {}
+    for epsilon in epsilons:
+        tracks[str(epsilon)] = []
+        for track in chosen_tracks:
+            tracks[str(epsilon)].append(track)
+    return tracks
+
+
+def train_on_chosen_tracks(chosen_tracks, epsilons, steps, root_dir):
+    root_dir = 'runs/' + root_dir + '/'
+
+    rewards_filepath = root_dir + 'rewards.csv'
+    remaining_tracks_filepath = root_dir + 'tracks_to_test.json'
+    last_network_filepath = root_dir + 'last_network.txt'
+
+    if not os.path.exists(root_dir):
+        os.makedirs(root_dir)
+        load_filepath = ''
+        i = 0
+    else:
+        load_filepath, i = load_last_network_path(last_network_filepath)
+
+    reward_writer = RewardWriter(rewards_filepath)
+
+    tracks = load_tracks(remaining_tracks_filepath)
+    if not tracks:
+        tracks = create_tracks_list(chosen_tracks, epsilons)
+    order_tracks(tracks)
+
+    save_filepath = load_filepath
+
+    for epsilon in epsilons:
+        while len(tracks[str(epsilon)]) > 0:
+            track = tracks[str(epsilon)][0]
+
+            load_filepath = save_filepath
+            save_filepath = root_dir + str(i) + '_' + track + '_' + str(epsilon) + '.h5f'
+
+            reward_writer.write_track(track, epsilon)
+
+            print('Track name:', tracks[str(epsilon)][0])
+            print('Epsilon:', epsilon)
+
+            DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
+                            nb_steps=steps, load_file_path=load_filepath, save_file_path=save_filepath,
+                            verbose=1, timeout=40000, epsilon=epsilon)
+
+            tracks[str(epsilon)].remove(track)
+            i += 1
+            save_remaining_tracks(tracks)
+            save_last_network_path(last_network_filepath, save_filepath, i)
+            reward_writer.completed_track()
+            print()
+            print()
+
+
 if __name__ == "__main__":
-    train_on_multiple_tracks()
-    # train_on_single_track('aalborg')
+    # train_on_all_tracks()
+    #train_on_single_track('aalborg')
+    train_on_chosen_tracks(['aalborg', 'a-speedway', 'e-track-6'], [0.5, 0.2, 0], 100000, 'three_tracks')
