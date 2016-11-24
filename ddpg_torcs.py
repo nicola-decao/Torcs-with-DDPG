@@ -190,7 +190,7 @@ def save_remaining_tracks(tracks):
         json.dump(tracks, f, sort_keys=True, indent=4)
 
 
-def load_tracks(track_filename):
+def load_tracks(track_filename, epsilons):
     if os.path.isfile(track_filename):
         with open(track_filename, 'r') as f:
             return json.load(f)
@@ -228,11 +228,8 @@ def train_on_multiple_tracks():
     file_path = 'trained_networks/test_'
     last_network_file_path = 'trained_networks/last_network.txt'
 
-    tracks = load_tracks(tracks_to_test)
+    tracks = load_tracks(tracks_to_test, epsilons)
     order_tracks(tracks)
-
-    save_file_path = ''
-    load_file_path = ''
 
     # load the right network
     if start_with_trained_network:
@@ -256,7 +253,7 @@ def train_on_multiple_tracks():
                 print(tracks[str(epsilon)][0], file=f)
 
             try:
-                DDPGTorcs.train(load=True, gui=True, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
+                DDPGTorcs.train(load=True, gui=False, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
                                 load_file_path=load_file_path, save_file_path=save_file_path, verbose=1, timeout=40000,
                                 epsilon=epsilon)
 
@@ -293,5 +290,5 @@ def train_on_single_track(track):
 
 
 if __name__ == "__main__":
-    # train_on_multiple_tracks()
-    train_on_single_track('aalborg')
+    train_on_multiple_tracks()
+    #train_on_single_track('aalborg')
