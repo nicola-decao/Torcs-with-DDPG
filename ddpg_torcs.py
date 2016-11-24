@@ -118,7 +118,7 @@ class DDPGTorcs:
                           memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
                           random_process=random_process, gamma=GAMMA, target_model_update=TAU)
 
-        agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mse'])
+        agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
 
         if load:
             agent.load_weights(load_file_path)
@@ -127,7 +127,8 @@ class DDPGTorcs:
             agent.fit(env, nb_steps=nb_steps, visualize=False, verbose=verbose,
                       nb_max_episode_steps=nb_max_episode_steps)
         else:
-            agent.test(env, visualize=False)
+            agent.test(env, visualize=False, nb_max_episode_steps=nb_max_episode_steps)
+            return env.did_one_lap()
 
         if save:
             print('Saving..')
@@ -144,9 +145,9 @@ class DDPGTorcs:
                         epsilon=epsilon)
 
     @staticmethod
-    def test(load_file_path, track='g-track-1', epsilon=1.0):
-        DDPGTorcs.__run(load=True, gui=True, load_file_path=load_file_path, track=track, nb_steps=1,
-                        nb_max_episode_steps=int(1e08), epsilon=epsilon)
+    def test(load_file_path, track='g-track-1', gui=False, nb_max_episode_steps=10000):
+        return DDPGTorcs.__run(load=True, gui=gui, load_file_path=load_file_path, track=track,
+                               epsilon=0, nb_max_episode_steps=nb_max_episode_steps)
 
 
 class ExplorationNoise:
@@ -195,7 +196,7 @@ def load_tracks(track_filename):
 def load_last_network_path(track_filename):
     if os.path.isfile(track_filename):
         with open(track_filename) as f:
-            network_name = f.readline().replace('\n', '')
+            network_name = f.readline()
             i = f.readline()
             return network_name, int(i)
     else:

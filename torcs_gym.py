@@ -63,6 +63,9 @@ class TorcsEnv(Env):
         self.__gear = 0
         self.__last_rmp = 0
         self.__time_stop = 0
+        self.__star_point = 0
+        self.__lap = False
+        self.__start_first_lap = False
 
         if reward:
             self.__reward = reward
@@ -72,17 +75,27 @@ class TorcsEnv(Env):
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
         self.observation_space = spaces.Box(low=0, high=0, shape=(29,))
 
+    def did_one_lap(self):
+        return self.__lap
+
     def _reset(self):
         if self.gui:
             self.client.send_restart_request()
         else:
             self.server.restart()
         self.client.restart()
+
         self.__gear = 0
         self.__last_rmp = 0
         self.__time_stop = 0
+        self.__lap = False
+        self.__start_first_lap = False
+
         time.sleep(0.1)
-        return self.__encode_state_data(self.client.step())
+
+        sensors = self.client.step()
+        self.__star_point = sensors['distFromStart'] - 10
+        return self.__encode_state_data(sensors)
 
     @staticmethod
     def __default_reward(sensors):
@@ -129,6 +142,13 @@ class TorcsEnv(Env):
         observation = self.__encode_state_data(sensors)
         reward = self.__reward(sensors)
         done = self.__check_done(sensors)
+
+        if 0 < sensors['distFromStart'] < 100:
+            self.__start_first_lap = True
+
+        if self.__start_first_lap and sensors['distFromStart'] > self.__star_point:
+            self.__lap = True
+
         return observation, reward, done, {}
 
     @staticmethod
@@ -163,7 +183,6 @@ class TorcsEnv(Env):
             self.__create_race_xml(track, track_type)
             self.__timeout = timeout
             self.__init_server()
-
 
         @staticmethod
         def __cmd_exists(cmd):
