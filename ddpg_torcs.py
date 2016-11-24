@@ -186,8 +186,8 @@ def create_complete_tracks_list(epsilons):
     return tracks
 
 
-def save_remaining_tracks(tracks):
-    with open('tracks_to_test.json', 'w+') as f:
+def save_remaining_tracks(tracks, filepath):
+    with open(filepath, 'w+') as f:
         json.dump(tracks, f, sort_keys=True, indent=4)
 
 
@@ -228,6 +228,7 @@ def train_on_all_tracks():
     tracks_to_test = 'tracks_to_test.json'
     file_path = 'trained_networks/test_'
     last_network_file_path = 'trained_networks/last_network.txt'
+    tracks_to_test_filepath = 'tracks_to_test.json'
 
     reward_writer = RewardWriter('rewards.csv')
 
@@ -258,7 +259,7 @@ def train_on_all_tracks():
             print()
 
             # write track name
-            reward_writer.write_track(track)
+            reward_writer.write_track(track, epsilon)
 
             try:
                 DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track, nb_steps=100000,
@@ -267,7 +268,7 @@ def train_on_all_tracks():
 
                 i += 1
                 tracks[str(epsilon)].remove(track)
-                save_remaining_tracks(tracks)
+                save_remaining_tracks(tracks, tracks_to_test_filepath)
                 save_last_network_path(last_network_file_path, save_file_path, i)
 
                 reward_writer.completed_track()
@@ -345,7 +346,7 @@ def train_on_chosen_tracks(chosen_tracks, epsilons, steps, root_dir):
 
             tracks[str(epsilon)].remove(track)
             i += 1
-            save_remaining_tracks(tracks)
+            save_remaining_tracks(tracks, remaining_tracks_filepath)
             save_last_network_path(last_network_filepath, save_filepath, i)
             reward_writer.completed_track()
             print()
