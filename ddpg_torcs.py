@@ -74,8 +74,8 @@ class DDPGTorcs:
     @staticmethod
     def __get_actor(env):
         observation_input = Input(shape=(1,) + env.observation_space.shape)
-        h0 = Dense(300, activation='relu', init='he_normal')(Flatten()(observation_input))
-        h1 = Dense(600, activation='relu', init='he_normal')(h0)
+        h0 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
+        h1 = Dense(200, activation='relu', init='he_normal')(h0)
         output = Dense(env.action_space.shape[0], activation='tanh', init='he_normal')(h1)
         return Model(input=observation_input, output=output)
 
@@ -83,9 +83,13 @@ class DDPGTorcs:
     def __get_critic(env):
         action_input = Input(shape=(env.action_space.shape[0],))
         observation_input = Input(shape=(1,) + env.observation_space.shape)
-        h0 = Dense(300, activation='relu', init='he_normal')(merge([action_input, Flatten()(observation_input)], mode='concat'))
-        h1 = Dense(300, activation='relu', init='he_normal')(h0)
-        output = Dense(1, activation='linear', init='he_normal')(h1)
+
+        w1 = Dense(100, activation='relu', init='he_normal')(Flatten()(observation_input))
+        a1 = Dense(100, activation='linear', init='he_normal')(action_input)
+        h1 = Dense(100, activation='linear', init='he_normal')(w1)
+        h2 = merge([h1, a1], mode='sum')
+        h3 = Dense(100, activation='relu', init='he_normal')(h2)
+        output = Dense(1, activation='linear', init='he_normal')(h3)
         return Model(input=[action_input, observation_input], output=output), action_input
 
     @staticmethod
@@ -164,7 +168,7 @@ class ExplorationNoise:
         if ab >= 0:
             ab /= (1 + state[0, 21] / 300)
         else:
-            ab *= (1 + state[0, 21] / 300)
+            ab *= state[0, 21] / 300
         return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0] * (1 - state[0, 21] / 300), ab])
 
 
