@@ -59,14 +59,13 @@ class HitReward:
             reward = 0
         elif np.abs(sensors['trackPos']) > 0.99:
             reward = -200
-        elif sensors['speedX'] == 0:
+        elif sensors['speedX'] < 1:
             reward = -2
         else:
             reward = diff / time_diff * (
                 np.cos(sensors['angle'])
                 - np.abs(np.sin(sensors['angle']))
                 - np.abs(sensors['trackPos']) ** 5)
-
         self.__last_time = current_time
         return reward
 
@@ -75,18 +74,18 @@ class DDPGTorcs:
     @staticmethod
     def __get_actor(env):
         observation_input = Input(shape=(1,) + env.observation_space.shape)
-        h0 = Dense(300, activation='relu')(Flatten()(observation_input))
-        h1 = Dense(600, activation='relu')(h0)
-        output = Dense(env.action_space.shape[0], activation='tanh')(h1)
+        h0 = Dense(300, activation='relu', init='he_normal')(Flatten()(observation_input))
+        h1 = Dense(600, activation='relu', init='he_normal')(h0)
+        output = Dense(env.action_space.shape[0], activation='tanh', init='he_normal')(h1)
         return Model(input=observation_input, output=output)
 
     @staticmethod
     def __get_critic(env):
         action_input = Input(shape=(env.action_space.shape[0],))
         observation_input = Input(shape=(1,) + env.observation_space.shape)
-        h0 = Dense(300, activation='relu')(merge([action_input, Flatten()(observation_input)], mode='concat'))
-        h1 = Dense(300, activation='relu')(h0)
-        output = Dense(1, activation='linear')(h1)
+        h0 = Dense(300, activation='relu', init='he_normal')(merge([action_input, Flatten()(observation_input)], mode='concat'))
+        h1 = Dense(300, activation='relu', init='he_normal')(h0)
+        output = Dense(1, activation='linear', init='he_normal')(h1)
         return Model(input=[action_input, observation_input], output=output), action_input
 
     @staticmethod
@@ -119,7 +118,7 @@ class DDPGTorcs:
                           memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
                           random_process=random_process, gamma=GAMMA, target_model_update=TAU)
 
-        agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
+        agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mse'])
 
         if load:
             agent.load_weights(load_file_path)
@@ -196,7 +195,7 @@ def load_tracks(track_filename):
 def load_last_network_path(track_filename):
     if os.path.isfile(track_filename):
         with open(track_filename) as f:
-            network_name = f.readline()
+            network_name = f.readline().replace('\n', '')
             i = f.readline()
             return network_name, int(i)
     else:
@@ -205,20 +204,26 @@ def load_last_network_path(track_filename):
 
 def save_last_network_path(last_network_file_path, save_file_path, i):
     with open(last_network_file_path, 'w+') as f:
-        f.write(save_file_path + '\n')
-        f.write(str(i))
+        print(save_file_path, file=f)
+        print(str(i), file=f)
+
+
+def order_tracks(tracks):
+    for key in tracks.keys():
+        tracks[key].sort()
 
 
 if __name__ == "__main__":
     # This is used if you want to restart everything but you want to have a trained network at the start
     start_with_trained_network = False
 
-    epsilons = [0.5, 0.3, 0.1, 0]
+    epsilons = [0.5, 0.1, 0]
     tracks_to_test = 'tracks_to_test.json'
     file_path = 'trained_networks/test_'
     last_network_file_path = 'trained_networks/last_network.txt'
 
     tracks = load_tracks(tracks_to_test)
+    order_tracks(tracks)
 
     save_file_path = ''
     load_file_path = ''
@@ -230,6 +235,8 @@ if __name__ == "__main__":
     else:
         load_file_path, i = load_last_network_path(last_network_file_path)
 
+    save_file_path = load_file_path
+
     for epsilon in epsilons:
         while len(tracks[str(epsilon)]) > 0:
             if i != 0:
@@ -240,16 +247,23 @@ if __name__ == "__main__":
 
             # write track name
             with open('rewards.csv', 'a') as f:
-                f.write(tracks[str(epsilon)][0] + '\n')
+                print(tracks[str(epsilon)][0], file=f)
 
-            DDPGTorcs.train(load=True, gui=False, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
+            try:
+                DDPGTorcs.train(load=True, gui=True, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
                             load_file_path=load_file_path, save_file_path=save_file_path, verbose=1, timeout=40000,
                             epsilon=epsilon)
-            i += 1
-            tracks[str(epsilon)].remove(tracks[str(epsilon)][0])
-            save_remaining_tracks(tracks)
-            save_last_network_path(last_network_file_path, save_file_path, i)
-            with open('rewards.csv', 'a') as f:
-                f.write('\n')
 
-    # DDPGTorcs.test('trained_networks/reward_test.h5f', 'g-track-1')
+                i += 1
+                tracks[str(epsilon)].remove(tracks[str(epsilon)][0])
+                save_remaining_tracks(tracks)
+                save_last_network_path(last_network_file_path, save_file_path, i)
+
+                with open('rewards.csv', 'a') as f:
+                    print('', file=f)
+            except:
+                # Torcs fucked up, so now we fix everything
+                save_file_path = load_file_path
+                with open('rewards.csv', 'a') as f:
+                    print('BAD RUN BAD RUN BAD RUN BAD RUN', file=f)
+                    print('', file=f)

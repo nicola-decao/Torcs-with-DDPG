@@ -134,12 +134,7 @@ class TorcsEnv(Env):
     @staticmethod
     def __decode_action_data(actions_vec):
         actions_dic = TorcsEnv.Client.get_empty_actions()
-        if actions_vec[0] >= 1:
-            actions_vec[0] = 0.9999
-        elif actions_vec[0] <= -1:
-            actions_vec[0] = -0.9999
-        steering = np.tanh(np.arctanh(actions_vec[0])/2)
-        actions_dic['steer'] = steering
+        actions_dic['steer'] = actions_vec[0]
 
         if actions_vec[1] >= 0:
             actions_dic['accel'] = actions_vec[1]

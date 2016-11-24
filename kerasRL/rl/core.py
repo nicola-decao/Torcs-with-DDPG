@@ -8,7 +8,7 @@ from kerasRL.rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLo
 
 def write_reward(episode_reward, steps):
     with open('rewards.csv', 'a') as f:
-        f.write("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward/steps) + '\n')
+        print("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward/steps), file=f)
 
 
 class Agent(object):
