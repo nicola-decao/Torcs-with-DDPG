@@ -1,9 +1,9 @@
 from __future__ import division
-from collections import deque
+
 import os
 
-import numpy as np
 import keras.backend as K
+import numpy as np
 
 from kerasRL.rl.core import Agent
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
@@ -24,15 +24,22 @@ class DDPGAgent(Agent):
                  random_process=OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=0.3),
                  custom_model_objects={}, target_model_update=.001):
         if hasattr(actor.output, '__len__') and len(actor.output) > 1:
-            raise ValueError('Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
+            raise ValueError(
+                'Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
         if hasattr(actor.input, '__len__') and len(actor.input) != 1:
-            raise ValueError('Actor "{}" does have too many inputs. The actor must have at exactly one input for the observation.'.format(actor))
+            raise ValueError(
+                'Actor "{}" does have too many inputs. The actor must have at exactly one input for the observation.'.format(
+                    actor))
         if hasattr(critic.output, '__len__') and len(critic.output) > 1:
-            raise ValueError('Critic "{}" has more than one output. DDPG expects a critic that has a single output.'.format(critic))
+            raise ValueError(
+                'Critic "{}" has more than one output. DDPG expects a critic that has a single output.'.format(critic))
         if critic_action_input not in critic.input:
-            raise ValueError('Critic "{}" does not have designated action input "{}".'.format(critic, critic_action_input))
+            raise ValueError(
+                'Critic "{}" does not have designated action input "{}".'.format(critic, critic_action_input))
         if not hasattr(critic.input, '__len__') or len(critic.input) != 2:
-            raise ValueError('Critic "{}" does not have enough inputs. The critic must have at exactly two inputs, one for the action and one for the observation.'.format(critic))
+            raise ValueError(
+                'Critic "{}" does not have enough inputs. The critic must have at exactly two inputs, one for the action and one for the observation.'.format(
+                    critic))
         if critic_action_input._keras_shape != actor.output._keras_shape:
             raise ValueError('Critic "{}" and actor "{}" do not have matching shapes')
 
@@ -83,7 +90,8 @@ class DDPGAgent(Agent):
 
         if hasattr(optimizer, '__len__'):
             if len(optimizer) != 2:
-                raise ValueError('More than two optimizers provided. Please only provide a maximum of two optimizers, the first one for the actor and the second one for the critic.')
+                raise ValueError(
+                    'More than two optimizers provided. Please only provide a maximum of two optimizers, the first one for the actor and the second one for the critic.')
             actor_optimizer, critic_optimizer = optimizer
         else:
             actor_optimizer = optimizer
@@ -137,12 +145,12 @@ class DDPGAgent(Agent):
             grads = [K.mean(g, axis=0) for g in grads]
         else:
             raise RuntimeError('Unknown Keras backend "{}".'.format(K._BACKEND))
-        
+
         # We now have the gradients (`grads`) of the combined model wrt to the actor's weights and
         # the output (`output`). Compute the necessary updates using a clone of the actor's optimizer.
         clipnorm = getattr(actor_optimizer, 'clipnorm', 0.)
         clipvalue = getattr(actor_optimizer, 'clipvalue', 0.)
-        
+
         def get_gradients(loss, params):
             # We want to follow the gradient, but the optimizer goes in the opposite direction to
             # minimize loss. Hence the double inversion.
@@ -154,7 +162,7 @@ class DDPGAgent(Agent):
             if clipvalue > 0.:
                 modified_grads = [K.clip(g, -clipvalue, clipvalue) for g in modified_grads]
             return modified_grads
-        
+
         actor_optimizer.get_gradients = get_gradients
         updates = actor_optimizer.get_updates(self.actor.trainable_weights, self.actor.constraints, None)
         if self.target_model_update < 1.:
@@ -237,11 +245,11 @@ class DDPGAgent(Agent):
         action = self.select_action(state)  # TODO: move this into policy
         if self.processor is not None:
             action = self.processor.process_action(action)
-        
+
         # Book-keeping.
         self.recent_observation = observation
         self.recent_action = action
-        
+
         return action
 
     @property
@@ -261,13 +269,13 @@ class DDPGAgent(Agent):
             # We're done here. No need to update the experience memory since we only use the working
             # memory to obtain the state over the most recent observations.
             return metrics
-        
+
         # Train the network on a single stochastic batch.
         can_train_either = self.step > self.nb_steps_warmup_critic or self.step > self.nb_steps_warmup_actor
         if can_train_either and self.step % self.train_interval == 0:
             experiences = self.memory.sample(self.batch_size)
             assert len(experiences) == self.batch_size
-            
+
             # Start by extracting the necessary parameters (we use a vectorized implementation).
             state0_batch = []
             reward_batch = []
@@ -299,14 +307,14 @@ class DDPGAgent(Agent):
                 state1_batch_with_action.insert(self.critic_action_input_idx, target_actions)
                 target_q_values = self.target_critic.predict_on_batch(state1_batch_with_action).flatten()
                 assert target_q_values.shape == (self.batch_size,)
-                
+
                 # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target ys accordingly,
                 # but only for the affected output units (as given by action_batch).
                 discounted_reward_batch = self.gamma * target_q_values
                 discounted_reward_batch *= terminal1_batch
                 assert discounted_reward_batch.shape == reward_batch.shape
                 targets = (reward_batch + discounted_reward_batch).reshape(self.batch_size, 1)
-                
+
                 # Perform a single batch update on the critic network.
                 state0_batch_with_action = [state0_batch]
                 state0_batch_with_action.insert(self.critic_action_input_idx, action_batch)

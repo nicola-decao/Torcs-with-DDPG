@@ -1,5 +1,5 @@
-from keras.models import model_from_config, Sequential, Model, model_from_config
 import keras.optimizers as optimizers
+from keras.models import model_from_config
 from keras.optimizers import optimizer_from_config
 
 

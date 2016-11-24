@@ -1,10 +1,10 @@
 from __future__ import absolute_import
-from collections import deque, namedtuple
-import warnings
+
 import random
+import warnings
+from collections import deque, namedtuple
 
 import numpy as np
-
 
 # This is to be understood as a transition: Given `state0`, performing `action`
 # yields `reward` and results in `state1`, which might be `terminal`.
@@ -26,7 +26,8 @@ def sample_batch_indexes(low, high, size):
         # Not enough data. Help ourselves with sampling from the range, but the same index
         # can occur multiple times. This is not good and should be avoided by picking a
         # large enough warm-up phase.
-        warnings.warn('Not enough entries to sample without replacement. Consider increasing your warm-up phase to avoid oversampling!')
+        warnings.warn(
+            'Not enough entries to sample without replacement. Consider increasing your warm-up phase to avoid oversampling!')
         batch_idxs = np.random.random_integers(low, high - 1, size=size)
     assert len(batch_idxs) == size
     return batch_idxs
@@ -102,10 +103,11 @@ class Memory(object):
         }
         return config
 
+
 class SequentialMemory(Memory):
     def __init__(self, limit, **kwargs):
         super(SequentialMemory, self).__init__(**kwargs)
-        
+
         self.limit = limit
 
         # Do not use deque to implement the memory. This data structure may seem convenient but
@@ -170,7 +172,7 @@ class SequentialMemory(Memory):
 
     def append(self, observation, action, reward, terminal, training=True):
         super(SequentialMemory, self).append(observation, action, reward, terminal, training=training)
-        
+
         # This needs to be understood as follows: in `observation`, take `action`, obtain `reward`
         # and weather the next state is `terminal` or not.
         if training:

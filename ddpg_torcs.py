@@ -1,15 +1,16 @@
 import json
+import os
+import time
 
 import numpy as np
-import time
 from keras.layers import Dense, Flatten, Input, merge
 from keras.models import Model
 from keras.optimizers import Adam
+
 from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from torcs_gym import TorcsEnv, TRACK_LIST
-import os
 
 GAMMA = 0.99
 TAU = 1e-3
@@ -218,7 +219,7 @@ def order_tracks(tracks):
         tracks[key].sort()
 
 
-if __name__ == "__main__":
+def train_on_multiple_tracks():
     # This is used if you want to restart everything but you want to have a trained network at the start
     start_with_trained_network = False
 
@@ -256,8 +257,8 @@ if __name__ == "__main__":
 
             try:
                 DDPGTorcs.train(load=True, gui=True, save=True, track=tracks[str(epsilon)][0], nb_steps=100000,
-                            load_file_path=load_file_path, save_file_path=save_file_path, verbose=1, timeout=40000,
-                            epsilon=epsilon)
+                                load_file_path=load_file_path, save_file_path=save_file_path, verbose=1, timeout=40000,
+                                epsilon=epsilon)
 
                 i += 1
                 tracks[str(epsilon)].remove(tracks[str(epsilon)][0])
@@ -272,3 +273,25 @@ if __name__ == "__main__":
                 with open('rewards.csv', 'a') as f:
                     print('BAD RUN BAD RUN BAD RUN BAD RUN', file=f)
                     print('', file=f)
+
+
+def train_on_single_track(track):
+    epsilon = 0.5
+    gui = True
+    load = False
+    save = True
+    steps = 500000
+
+    if load:
+        load_file_path = 'trained_networks/pre_trained.h5f'
+    else:
+        load_file_path = ''
+    save_file_path = 'trained_networks/single_track.h5f'
+
+    DDPGTorcs.train(load=load, gui=gui, save=save, track=track, nb_steps=steps, load_file_path=load_file_path,
+                    save_file_path=save_file_path, verbose=1, timeout=40000, epsilon=epsilon)
+
+
+if __name__ == "__main__":
+    # train_on_multiple_tracks()
+    train_on_single_track('aalborg')

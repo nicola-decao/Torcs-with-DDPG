@@ -8,7 +8,8 @@ from kerasRL.rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLo
 
 def write_reward(episode_reward, steps):
     with open('rewards.csv', 'a') as f:
-        print("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward/steps), file=f)
+        print("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward / steps),
+              file=f)
 
 
 class Agent(object):
@@ -18,12 +19,13 @@ class Agent(object):
 
     def get_config(self):
         return {}
-        
+
     def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
             nb_max_episode_steps=None):
         if not self.compiled:
-            raise RuntimeError('Your tried to fit your agent but it hasn\'t been compiled yet. Please call `compile()` before `fit()`.')
+            raise RuntimeError(
+                'Your tried to fit your agent but it hasn\'t been compiled yet. Please call `compile()` before `fit()`.')
         if action_repetition < 1:
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
@@ -78,7 +80,9 @@ class Agent(object):
                         observation, _, done, _ = env.step(action)
                         callbacks.on_action_end(action)
                         if done:
-                            warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(nb_random_start_steps))
+                            warnings.warn(
+                                'Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(
+                                    nb_random_start_steps))
                             observation = env.reset()
                             break
 
@@ -88,7 +92,7 @@ class Agent(object):
                 assert observation is not None
 
                 # Run a single step.
-                callbacks.on_step_begin(episode_step)    
+                callbacks.on_step_begin(episode_step)
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
                 action = self.forward(observation)
@@ -106,7 +110,7 @@ class Agent(object):
                     done = True
                 metrics = self.backward(reward, terminal=done)
                 episode_reward += reward
-                    
+
                 step_logs = {
                     'action': action,
                     'observation': observation,
@@ -159,13 +163,14 @@ class Agent(object):
     def test(self, env, nb_episodes=1, action_repetition=1, callbacks=None, visualize=True,
              nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None, verbose=1):
         if not self.compiled:
-            raise RuntimeError('Your tried to test your agent but it hasn\'t been compiled yet. Please call `compile()` before `test()`.')
+            raise RuntimeError(
+                'Your tried to test your agent but it hasn\'t been compiled yet. Please call `compile()` before `test()`.')
         if action_repetition < 1:
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
         self.training = False
         self.step = 0
-        
+
         callbacks = [] if not callbacks else callbacks[:]
 
         if verbose >= 1:
@@ -205,7 +210,9 @@ class Agent(object):
                 observation, _, done, _ = env.step(action)
                 callbacks.on_action_end(action)
                 if done:
-                    warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(nb_random_start_steps))
+                    warnings.warn(
+                        'Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(
+                            nb_random_start_steps))
                     observation = env.reset()
                     break
 
@@ -228,7 +235,7 @@ class Agent(object):
                     done = True
                 self.backward(reward, terminal=done)
                 episode_reward += reward
-                
+
                 callbacks.on_step_end(episode_step)
                 episode_step += 1
                 self.step += 1

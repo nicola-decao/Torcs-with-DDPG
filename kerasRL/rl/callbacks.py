@@ -1,12 +1,11 @@
 from __future__ import division
 from __future__ import print_function
-import warnings
-import timeit
+
 import json
-from tempfile import mkdtemp
+import timeit
+import warnings
 
 import numpy as np
-
 from keras.callbacks import Callback as KerasCallback, CallbackList as KerasCallbackList
 from keras.utils.generic_utils import Progbar
 
@@ -114,7 +113,7 @@ class TrainEpisodeLogger(Callback):
         self.train_start = timeit.default_timer()
         self.metrics_names = self.model.metrics_names
         print('Training for {} steps ...'.format(self.params['nb_steps']))
-        
+
     def on_train_end(self, logs):
         duration = timeit.default_timer() - self.train_start
         print('done, took {:.3f} seconds'.format(duration))
@@ -145,7 +144,7 @@ class TrainEpisodeLogger(Callback):
                 except Warning:
                     value = '--'
                     metrics_template += '{}: {}'
-                metrics_variables += [name, value]          
+                metrics_variables += [name, value]
         metrics_text = metrics_template.format(*metrics_variables)
 
         nb_step_digits = str(int(np.ceil(np.log10(self.params['nb_steps']))) + 1)
@@ -220,7 +219,11 @@ class TrainIntervalLogger(Callback):
                     assert means.shape == (len(self.metrics_names),)
                     for name, mean in zip(self.metrics_names, means):
                         formatted_metrics += ' - {}: {:.3f}'.format(name, mean)
-                print('{} episodes - episode_reward: {:.3f} [{:.3f}, {:.3f}]{}'.format(len(self.episode_rewards), np.mean(self.episode_rewards), np.min(self.episode_rewards), np.max(self.episode_rewards), formatted_metrics))
+                print('{} episodes - episode_reward: {:.3f} [{:.3f}, {:.3f}]{}'.format(len(self.episode_rewards),
+                                                                                       np.mean(self.episode_rewards),
+                                                                                       np.min(self.episode_rewards),
+                                                                                       np.max(self.episode_rewards),
+                                                                                       formatted_metrics))
                 print('')
             self.reset()
             print('Interval {} ({} steps performed)'.format(self.step // self.interval + 1, self.step))
@@ -260,7 +263,7 @@ class FileLogger(Callback):
 
     def on_episode_end(self, episode, logs):
         duration = timeit.default_timer() - self.starts[episode]
-        
+
         metrics = self.metrics[episode]
         if np.isnan(metrics).all():
             mean_metrics = np.array([np.nan for _ in self.metrics_names])

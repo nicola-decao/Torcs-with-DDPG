@@ -1,4 +1,5 @@
 from __future__ import division
+
 import numpy as np
 
 from kerasRL.rl.util import *
@@ -78,7 +79,7 @@ class EpsGreedyQPolicy(Policy):
         nb_actions = q_values.shape[0]
 
         if np.random.uniform() < self.eps:
-            action = np.random.random_integers(0, nb_actions-1)
+            action = np.random.random_integers(0, nb_actions - 1)
         else:
             action = np.argmax(q_values)
         return action

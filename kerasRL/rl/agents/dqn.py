@@ -1,9 +1,7 @@
 from __future__ import division
-from collections import deque
-from copy import deepcopy
 
-import numpy as np
 import keras.backend as K
+import numpy as np
 from keras.layers import Lambda, Input, merge, Layer
 from keras.models import Model
 
@@ -26,10 +24,13 @@ class DQNAgent(Agent):
                  custom_model_objects={}, processor=None):
         # Validate (important) input.
         if hasattr(model.output, '__len__') and len(model.output) > 1:
-            raise ValueError('Model "{}" has more than one output. DQN expects a model that has a single output.'.format(model))
+            raise ValueError(
+                'Model "{}" has more than one output. DQN expects a model that has a single output.'.format(model))
         if model.output._keras_shape != (None, nb_actions):
-            raise ValueError('Model output "{}" has invalid shape. DQN expects a model that has one dimension for each action, in this case {}.'.format(model.output, nb_actions))
-        
+            raise ValueError(
+                'Model output "{}" has invalid shape. DQN expects a model that has one dimension for each action, in this case {}.'.format(
+                    model.output, nb_actions))
+
         super(DQNAgent, self).__init__()
 
         # Soft vs hard target model updates.
@@ -91,7 +92,7 @@ class DQNAgent(Agent):
         self.target_model = clone_model(self.model, self.custom_model_objects)
         self.target_model.compile(optimizer='sgd', loss='mse')
         self.model.compile(optimizer='sgd', loss='mse')
-        
+
         # Compile model.
         if self.target_model_update < 1.:
             # We use the `AdditionalUpdatesOptimizer` to efficiently soft-update the target model.
@@ -124,7 +125,7 @@ class DQNAgent(Agent):
         ]
         trainable_model.compile(optimizer=optimizer, loss=losses, metrics=combined_metrics)
         self.trainable_model = trainable_model
-        
+
         self.compiled = True
 
     def load_weights(self, filepath):
@@ -175,7 +176,7 @@ class DQNAgent(Agent):
         # Book-keeping.
         self.recent_observation = observation
         self.recent_action = action
-        
+
         return action
 
     def backward(self, reward, terminal):
@@ -196,7 +197,7 @@ class DQNAgent(Agent):
         if self.step > self.nb_steps_warmup and self.step % self.train_interval == 0:
             experiences = self.memory.sample(self.batch_size)
             assert len(experiences) == self.batch_size
-            
+
             # Start by extracting the necessary parameters (we use a vectorized implementation).
             state0_batch = []
             reward_batch = []
@@ -246,7 +247,7 @@ class DQNAgent(Agent):
             targets = np.zeros((self.batch_size, self.nb_actions))
             dummy_targets = np.zeros((self.batch_size,))
             masks = np.zeros((self.batch_size, self.nb_actions))
-            
+
             # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target targets accordingly,
             # but only for the affected output units (as given by action_batch).
             discounted_reward_batch = self.gamma * q_batch
@@ -265,7 +266,8 @@ class DQNAgent(Agent):
             # the actual loss is computed in a Lambda layer that needs more complex input. However,
             # it is still useful to know the actual target to compute metrics properly.
             metrics = self.trainable_model.train_on_batch([state0_batch, targets, masks], [dummy_targets, targets])
-            metrics = [metric for idx, metric in enumerate(metrics) if idx not in (1, 2)]  # throw away individual losses
+            metrics = [metric for idx, metric in enumerate(metrics) if
+                       idx not in (1, 2)]  # throw away individual losses
             metrics += self.policy.run_metrics()
 
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
@@ -340,18 +342,18 @@ class NAFLayer(Layer):
             nb_rows = tf.shape(L_flat)[0]
             zeros = tf.expand_dims(tf.tile(K.zeros((1,)), [nb_rows]), 1)
             L_flat = tf.concat(1, [zeros, L_flat])
-            
+
             # Create mask that can be used to gather elements from L_flat and put them
             # into a lower triangular matrix.
             tril_mask = np.zeros((self.nb_actions, self.nb_actions), dtype='int32')
             tril_mask[np.tril_indices(self.nb_actions)] = range(1, nb_elems + 1)
-            
+
             # Finally, process each element of the batch.
             init = [
                 K.zeros((self.nb_actions, self.nb_actions)),
                 K.zeros((self.nb_actions, self.nb_actions)),
             ]
-            
+
             def fn(a, x):
                 # Exponentiate everything. This is much easier than only exponentiating
                 # the diagonal elements, and, usually, the action space is relatively low.
@@ -394,10 +396,11 @@ class NAFLayer(Layer):
         shape = list(input_shape)
         if len(shape) != 2:
             raise RuntimeError('Input tensor must be 2D, has shape {} instead.'.format(input_shape))
-        expected_elements = (self.nb_actions * self.nb_actions + self.nb_actions) // 2 + self.nb_actions + self.nb_actions
+        expected_elements = (
+                                self.nb_actions * self.nb_actions + self.nb_actions) // 2 + self.nb_actions + self.nb_actions
         if shape[-1] != expected_elements:
             raise RuntimeError(('Last dimension of input tensor must have exactly {} elements, ' +
-                                'has {} elements instead. This layer expects the input in the ' + 
+                                'has {} elements instead. This layer expects the input in the ' +
                                 'following order: [L_flat, mu, action].').format(expected_elements, shape[-1]))
         shape[-1] = 1
         return tuple(shape)
@@ -409,7 +412,7 @@ class ContinuousDQNAgent(DQNAgent):
                  target_model_update=10000, delta_range=(-np.inf, np.inf), custom_model_objects={},
                  processor=None, random_process=None):
         # TODO: Validate (important) input.
-        
+
         # TODO: call super of abstract DQN agent
 
         # Soft vs hard target model updates.
@@ -485,11 +488,11 @@ class ContinuousDQNAgent(DQNAgent):
             # We use the `AdditionalUpdatesOptimizer` to efficiently soft-update the target model.
             updates = get_soft_target_model_updates(self.target_V_model, self.V_model, self.target_model_update)
             optimizer = AdditionalUpdatesOptimizer(optimizer, updates)
-        
+
         def clipped_mse(y_true, y_pred):
             delta = K.clip(y_true - y_pred, self.delta_range[0], self.delta_range[1])
             return K.mean(K.square(delta), axis=-1)
-        
+
         combined.compile(loss=clipped_mse, optimizer=optimizer, metrics=metrics)
         self.combined_model = combined
 
@@ -521,7 +524,7 @@ class ContinuousDQNAgent(DQNAgent):
         # Book-keeping.
         self.recent_observation = observation
         self.recent_action = action
-        
+
         return action
 
     def backward(self, reward, terminal):
@@ -537,12 +540,12 @@ class ContinuousDQNAgent(DQNAgent):
             # We're done here. No need to update the experience memory since we only use the working
             # memory to obtain the state over the most recent observations.
             return metrics
-        
+
         # Train the network on a single stochastic batch.
         if self.step > self.nb_steps_warmup and self.step % self.train_interval == 0:
             experiences = self.memory.sample(self.batch_size)
             assert len(experiences) == self.batch_size
-            
+
             # Start by extracting the necessary parameters (we use a vectorized implementation).
             state0_batch = []
             reward_batch = []

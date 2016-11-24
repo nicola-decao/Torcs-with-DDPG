@@ -1,12 +1,12 @@
 import glob
 import json
+import os
 
+import numpy as np
 from keras import optimizers
 from keras.engine import Input
 from keras.engine import Model
 from keras.layers import Dense, Flatten
-import numpy as np
-import os
 
 observation_input = Input(shape=(1, 29))
 h0 = Dense(300, activation='relu')(Flatten()(observation_input))
