@@ -13,7 +13,7 @@ class RewardWriter:
 
     def write_reward(self, episode_reward, steps):
         print("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward / steps),
-                file=self.f)
+              file=self.f)
         self.flush()
 
     def bad_run(self):

@@ -9,44 +9,8 @@ import numpy as np
 from gym import spaces
 from gym.core import Env
 
-TRACK_LIST = {'aalborg': 'road',
-              'alpine-1': 'road',
-              'alpine-2': 'road',
-              'brondehach': 'road',
-              'corkscrew': 'road',
-              'eroad': 'road',
-              'e-track-1': 'road',
-              'e-track-2': 'road',
-              'e-track-3': 'road',
-              'e-track-4': 'road',
-              'e-track-6': 'road',
-              'forza': 'road',
-              'g-track-1': 'road',
-              'g-track-2': 'road',
-              'g-track-3': 'road',
-              'ole-road-1': 'road',
-              'ruudskogen': 'road',
-              'spring': 'road',
-              'street-1': 'road',
-              'wheel-1': 'road',
-              'wheel-2': 'road',
-              'a-speedway': 'oval',
-              'b-speedway': 'oval',
-              'c-speedway': 'oval',
-              'd-speedway': 'oval',
-              'e-speedway': 'oval',
-              'e-track-5': 'oval',
-              'f-speedway': 'oval',
-              'g-speedway': 'oval',
-              'michigan': 'oval',
-              'dirt-1': 'dirt',
-              'dirt-2': 'dirt',
-              'dirt-3': 'dirt',
-              'dirt-4': 'dirt',
-              'dirt-5': 'dirt',
-              'dirt-6': 'dirt',
-              'mixed-1': 'dirt',
-              'mixed-2': 'dirt'}
+import track_utilities
+from time_speedup import speed_up_time
 
 
 class TorcsEnv(Env):
@@ -54,7 +18,7 @@ class TorcsEnv(Env):
         # TODO fix gui=False
 
         self.gui = gui
-        self.server = self.Server(track, TRACK_LIST[track], gui, timeout=timeout)
+        self.server = self.Server(track, track_utilities.TRACK_LIST[track], gui, timeout=timeout)
         self.client = self.Client(self.server, host, port, sid)
         self.__terminal_judge_start = 250
         self.__termination_limit_progress = 20
@@ -81,6 +45,7 @@ class TorcsEnv(Env):
     def _reset(self):
         if self.gui:
             self.client.send_restart_request()
+            speed_up_time()
         else:
             self.server.restart()
         self.client.restart()
