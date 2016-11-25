@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 from keras.layers import Dense, Flatten, Input, merge
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.optimizers import Adam
 
 from kerasRL.rl.agents import DDPGAgent
@@ -76,17 +76,17 @@ class HitReward:
 
 class DDPGTorcs:
     @staticmethod
-    def __get_actor(env):
-        observation_input = Input(shape=(1,) + env.observation_space.shape)
+    def __get_actor(observation_shape, action_shape):
+        observation_input = Input(shape=(1,) + observation_shape)
         h0 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
         h1 = Dense(200, activation='relu', init='he_normal')(h0)
-        output = Dense(env.action_space.shape[0], activation='tanh', init='he_normal')(h1)
+        output = Dense(action_shape[0], activation='tanh', init='he_normal')(h1)
         return Model(input=observation_input, output=output)
 
     @staticmethod
-    def __get_critic(env):
-        action_input = Input(shape=(env.action_space.shape[0],))
-        observation_input = Input(shape=(1,) + env.observation_space.shape)
+    def __get_critic(observation_shape, action_shape):
+        action_input = Input(shape=(action_shape[0],))
+        observation_input = Input(shape=(1,) + observation_shape)
 
         w1 = Dense(100, activation='relu', init='he_normal')(Flatten()(observation_input))
         a1 = Dense(100, activation='linear', init='he_normal')(action_input)
@@ -97,7 +97,7 @@ class DDPGTorcs:
         return Model(input=[action_input, observation_input], output=output), action_input
 
     @staticmethod
-    def export_dl4j(net, filename):
+    def __export_dl4j(net, filename):
         r = []
         for w in net.get_weights():
             r += np.transpose(w).flatten().tolist()
@@ -110,8 +110,8 @@ class DDPGTorcs:
 
         env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=HitReward().reward)
 
-        actor = DDPGTorcs.__get_actor(env)
-        critic, action_input = DDPGTorcs.__get_critic(env)
+        actor = DDPGTorcs.__get_actor(env.observation_space.shape, env.action_space.shape)
+        critic, action_input = DDPGTorcs.__get_critic(env.observation_space.shape, env.action_space.shape)
 
         memory = SequentialMemory(limit=100000, window_length=1)
 
@@ -154,6 +154,18 @@ class DDPGTorcs:
     def test(load_file_path, track='g-track-1', gui=False, nb_max_episode_steps=10000):
         return DDPGTorcs.__run(load=True, gui=gui, load_file_path=load_file_path, track=track,
                                epsilon=0, nb_max_episode_steps=nb_max_episode_steps)
+
+    def __load_actor_network(self, filepath):
+        filename, extension = os.path.splitext(filepath)
+        actor_filepath = filename + '_actor' + extension
+        actor = self.__get_actor((29,), (2,))
+        actor.load_weights(actor_filepath)
+        actor = actor
+        return actor
+
+    def convert_h5f_to_dl4j(self, h5f_filepath, export_filepath):
+        actor = self.__load_actor_network(h5f_filepath)
+        self.__export_dl4j(actor, export_filepath)
 
 
 class ExplorationNoise:
@@ -356,4 +368,5 @@ def train_on_chosen_tracks(chosen_tracks, epsilons, steps, root_dir):
 if __name__ == "__main__":
     # train_on_all_tracks()
     #train_on_single_track('aalborg')
-    train_on_chosen_tracks(['aalborg', 'a-speedway', 'e-track-6'], [0.5, 0.2, 0], 100000, 'three_tracks')
+    train_on_chosen_tracks(['g-track-1'], [0.5, 0.2, 0], 100000, 'three_tracks_2')
+    #DDPGTorcs().convert_h5f_to_dl4j('/home/marco/PycharmProjects/Torcs_py/runs/three_tracks/8_e-track-6_0.h5f', 'test.dl4j')
