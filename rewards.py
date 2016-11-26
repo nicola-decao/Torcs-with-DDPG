@@ -3,13 +3,22 @@ import numpy as np
 
 class DefaultReward:
     def reward(self, sensors):
-        if np.abs(sensors['trackPos']) > 0.99:
+        damage = sensors['damage']
+        angle = sensors['angle']
+        speed_x = sensors['speedX']
+        speed_y = sensors['speedY']
+        track_pos = sensors['trackPos']
+        abs_track_pos = np.abs(track_pos)
+        cosine = np.cos(angle)
+        abs_sine = np.abs(np.sin(angle))
+
+        if track_pos > 0.99 or damage > 0:
             reward = -200
         else:
-            reward = sensors['speedX'] * (
-                np.cos(sensors['angle'])
-                - np.abs(np.sin(sensors['angle']))
-                - np.abs(sensors['trackPos']))
+            reward = (speed_x - np.abs(speed_y)) * (
+                cosine
+                - abs_sine
+                - abs_track_pos)
         return reward
 
     def get_minimum_reward(self):
@@ -40,32 +49,26 @@ class ProgressiveSmoothingReward:
 
 class HitReward:
     def __init__(self):
-        self.__last_damage = 0
         self.__exit_reward = -10000
-        self.__damage_reward = -1000
         self.__idle_reward = -5
 
     def get_minimum_reward(self):
         return self.__exit_reward
 
     def reward(self, sensors):
-        damage_diff = sensors['damage'] - self.__last_damage
-        self.__last_damage = sensors['damage']
+        damage = sensors['damage']
         angle = sensors['angle']
         speed = sensors['speedX']
+        track_pos = sensors['trackPos']
+        abs_track_pos = np.abs(track_pos)
 
-        if np.abs(sensors['trackPos']) > 0.99:
-            reward = self.__exit_reward
-        elif damage_diff > 0:
-            reward = self.__damage_reward * damage_diff
-        elif speed < 1:
+        if abs_track_pos > 0.99 or damage > 0:
+            reward = min(self.__exit_reward + sensors['distRaced'], 0)
+        elif speed < 5:
             reward = self.__idle_reward
         else:
             cosine = np.cos(angle)
             abs_sine = np.abs(np.sin(angle))
-            abs_track_pos = np.abs(sensors['trackPos']) ** 10
 
-            assert -1 <= cosine <= 1 and abs_sine <= 1 and abs_track_pos < 1
-
-            reward = speed * (cosine - abs_sine - abs_track_pos)
+            reward = 0.1 * speed * (cosine - abs_sine - abs_track_pos)
         return reward

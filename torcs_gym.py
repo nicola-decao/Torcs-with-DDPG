@@ -72,7 +72,7 @@ class TorcsEnv(Env):
             self.__time_stop += 1
         else:
             self.__time_stop = 0
-        return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99
+        return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99 or sensors['damage'] > 0
 
     def _step(self, action):
         a = self.__decode_action_data(action)
@@ -151,9 +151,9 @@ class TorcsEnv(Env):
             time.sleep(0.001)
             if self.__gui:
                 if self.__cmd_exists('optirun'):
-                    os.system('optirun torcs -nofuel -nolaptime -t {} >/dev/null &'.format(self.__timeout))
+                    os.system('optirun torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
                 else:
-                    os.system('torcs -nofuel -nolaptime -t {} >/dev/null &'.format(self.__timeout))
+                    os.system('torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
                 time.sleep(2)
                 os.system('sh utilities/autostart.sh')
             else:

@@ -1,5 +1,4 @@
 import numpy as np
-import time
 from keras.layers import Dense, Flatten, Input, merge
 from keras.models import Model
 from keras.optimizers import Adam
@@ -8,7 +7,7 @@ from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from noises import ExplorationNoise
-from rewards import HitReward
+from rewards import DefaultReward
 from torcs_gym import TorcsEnv
 
 GAMMA = 0.99
@@ -20,7 +19,7 @@ class DDPGTorcs:
     def __get_actor(env):
         observation_input = Input(shape=(1,) + env.observation_space.shape)
         h0 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
-        h1 = Dense(500, activation='relu', init='he_normal')(h0)
+        h1 = Dense(200, activation='relu', init='he_normal')(h0)
         output = Dense(env.action_space.shape[0], activation='tanh', init='he_normal')(h1)
         return Model(input=observation_input, output=output)
 
@@ -50,7 +49,7 @@ class DDPGTorcs:
               track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0, noise=1):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=HitReward())
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=DefaultReward())
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -89,7 +88,7 @@ class DDPGTorcs:
     @staticmethod
     def train(reward_writer, load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000,
               track='g-track-1',
-              verbose=0, nb_steps=30000, nb_max_episode_steps=10000, epsilon=1.0, noise=1):
+              verbose=0, nb_steps=30000, nb_max_episode_steps=50000, epsilon=1.0, noise=1):
 
         DDPGTorcs.__run(reward_writer, load=load, save=save, gui=gui, load_file_path=load_file_path,
                         save_file_path=save_file_path,

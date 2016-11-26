@@ -5,6 +5,7 @@ import time
 from keras.callbacks import History
 
 from kerasRL.rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLogger, Visualizer, CallbackList
+import math
 
 
 class Agent(object):
@@ -91,6 +92,8 @@ class Agent(object):
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
                 action = self.forward(observation)
+                # if observation[21]*300 > 200:
+                #     action[1] = 0
                 reward = 0.
                 done = False
                 for _ in range(action_repetition):

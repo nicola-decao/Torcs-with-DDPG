@@ -191,15 +191,16 @@ class DDPGAgent(Agent):
         target_actor_filepath = filename + '_target_actor' + extension
         target_critic_filepath = filename + '_target_critic' + extension
 
-        if os.path.exists(actor_filepath) and os.path.exists(critic_filepath):
+        if os.path.exists(actor_filepath) and os.path.exists(target_actor_filepath):
             self.actor.load_weights(actor_filepath)
-            self.critic.load_weights(critic_filepath)
-
-        if os.path.exists(target_actor_filepath) and os.path.exists(target_critic_filepath):
             self.target_actor.load_weights(target_actor_filepath)
-            self.target_critic.load_weights(target_critic_filepath)
         else:
             self.target_actor.set_weights(self.actor.get_weights())
+
+        if os.path.exists(critic_filepath) and os.path.exists(target_critic_filepath):
+            self.critic.load_weights(critic_filepath)
+            self.target_critic.load_weights(target_critic_filepath)
+        else:
             self.target_critic.set_weights(self.critic.get_weights())
 
     def save_weights(self, filepath, overwrite=False):
