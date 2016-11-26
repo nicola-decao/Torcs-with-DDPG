@@ -11,7 +11,7 @@ from gym.core import Env
 
 import track_utilities
 from rewards import DefaultReward
-from time_speedup import speed_up_time
+from utilities.time_speedup import speed_up_time
 
 
 class TorcsEnv(Env):
@@ -155,7 +155,7 @@ class TorcsEnv(Env):
                 else:
                     os.system('torcs -nofuel -nolaptime -t {} >/dev/null &'.format(self.__timeout))
                 time.sleep(2)
-                os.system('sh autostart.sh')
+                os.system('sh utilities/autostart.sh')
             else:
                 os.system('torcs -nofuel -nolaptime -r ' + self.__quickrace_xml_path + ' >/dev/null &')
             # print('Server created!')

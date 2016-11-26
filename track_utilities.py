@@ -2,7 +2,7 @@ import json
 import os
 
 from ddpg_torcs import DDPGTorcs
-from reward_writer import RewardWriter
+from utilities.reward_writer import RewardWriter
 
 TRACK_LIST = {'aalborg': 'road',
               'alpine-1': 'road',
