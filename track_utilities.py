@@ -92,17 +92,20 @@ class TrackUtilities:
             tracks[key].sort()
 
     @staticmethod
-    def train_on_all_tracks():
+    def train_on_all_tracks(root_dir='all_tracks'):
         # This is used if you want to restart everything but you want to have a trained network at the start
         start_with_trained_network = False
 
-        epsilons = [0.5, 0.1, 0]
-        tracks_to_test = 'tracks_to_test.json'
-        file_path = 'trained_networks/test_'
-        last_network_file_path = 'trained_networks/last_network.txt'
-        tracks_to_test_filepath = 'tracks_to_test.json'
+        root_dir = 'runs/' + root_dir + '/'
 
-        reward_writer = RewardWriter('rewards.csv')
+        epsilons = [0.5, 0.1, 0]
+        tracks_to_test = root_dir + 'tracks_to_test.json'
+        network_filepath = root_dir + 'trained_networks/test_'
+        last_network_filepath = root_dir + 'trained_networks/last_network.txt'
+        tracks_to_test_filepath = root_dir + 'tracks_to_test.json'
+        rewards_filepath = root_dir + 'rewards.csv'
+
+        reward_writer = RewardWriter(rewards_filepath)
 
         tracks = TrackUtilities.load_tracks(tracks_to_test)
         if not tracks:
@@ -111,20 +114,20 @@ class TrackUtilities:
 
         # load the right network
         if start_with_trained_network:
-            load_file_path = 'trained_networks/pre_trained.h5f'
+            load_filepath = 'trained_networks/pre_trained.h5f'
             i = 0
         else:
-            load_file_path, i = TrackUtilities.load_last_network_path(last_network_file_path)
+            load_filepath, i = TrackUtilities.load_last_network_path(last_network_filepath)
 
-        save_file_path = load_file_path
+        save_filepath = load_filepath
 
         for epsilon in epsilons:
             while len(tracks[str(epsilon)]) > 0:
                 track = tracks[str(epsilon)][0]
 
                 if i != 0:
-                    load_file_path = save_file_path
-                save_file_path = file_path + str(i) + '_' + track + '_' + str(epsilon) + '.h5f'
+                    load_filepath = save_filepath
+                save_filepath = network_filepath + str(i) + '_' + track + '_' + str(epsilon) + '.h5f'
 
                 print('Track name:', track)
                 print('Epsilon:', epsilon)
@@ -135,19 +138,19 @@ class TrackUtilities:
 
                 try:
                     DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track, nb_steps=100000,
-                                    load_file_path=load_file_path, save_file_path=save_file_path, verbose=1,
+                                    load_file_path=load_filepath, save_file_path=save_filepath, verbose=1,
                                     timeout=40000,
                                     epsilon=epsilon)
 
                     i += 1
                     tracks[str(epsilon)].remove(track)
                     TrackUtilities.save_remaining_tracks(tracks, tracks_to_test_filepath)
-                    TrackUtilities.save_last_network_path(last_network_file_path, save_file_path, i)
+                    TrackUtilities.save_last_network_path(last_network_filepath, save_filepath, i)
 
                     reward_writer.completed_track()
                 except:
                     # Torcs fucked up, so now we fix everything
-                    save_file_path = load_file_path
+                    save_file_path = load_filepath
                     reward_writer.bad_run()
                     reward_writer.completed_track()
 
@@ -233,3 +236,7 @@ class TrackUtilities:
                 reward_writer.completed_track()
                 print()
                 print()
+
+    @staticmethod
+    def test_network(track, load_filepath):
+        DDPGTorcs.test(None, load_filepath, track=track)

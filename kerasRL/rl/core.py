@@ -1,6 +1,7 @@
 import warnings
 
 import numpy as np
+import time
 from keras.callbacks import History
 
 from kerasRL.rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLogger, Visualizer, CallbackList
@@ -97,13 +98,19 @@ class Agent(object):
                     observation, r, done, _ = env.step(action)
                     callbacks.on_action_end(action)
                     reward += r
+
                     if done:
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     # Force a terminal state.
                     done = True
-                metrics = self.backward(reward, terminal=done)
+
                 episode_reward += reward
+
+                if episode_reward < env.get_minimum_reward():
+                    episode_reward = env.get_minimum_reward()
+                else:
+                    metrics = self.backward(reward, terminal=done)
 
                 step_logs = {
                     'action': action,

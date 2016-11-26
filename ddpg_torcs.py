@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from keras.layers import Dense, Flatten, Input, merge
 from keras.models import Model
 from keras.optimizers import Adam
@@ -7,7 +8,7 @@ from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from noises import ExplorationNoise
-from rewards import HitReward, ProgressiveSmoothingReward
+from rewards import HitReward
 from torcs_gym import TorcsEnv
 
 GAMMA = 0.99
@@ -19,7 +20,7 @@ class DDPGTorcs:
     def __get_actor(env):
         observation_input = Input(shape=(1,) + env.observation_space.shape)
         h0 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
-        h1 = Dense(200, activation='relu', init='he_normal')(h0)
+        h1 = Dense(500, activation='relu', init='he_normal')(h0)
         output = Dense(env.action_space.shape[0], activation='tanh', init='he_normal')(h1)
         return Model(input=observation_input, output=output)
 
@@ -49,7 +50,7 @@ class DDPGTorcs:
               track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0, noise=1):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=ProgressiveSmoothingReward().reward)
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=HitReward())
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -82,7 +83,7 @@ class DDPGTorcs:
             print('Saving..')
             agent.save_weights(save_file_path, overwrite=True)
             print('Noise:', random_process.get_noise())
-            print('steps:', agent.step, '/', nb_steps)
+            print('steps:', agent.step, '/', nb_steps, '-', nb_steps-agent.step)
             print('Saved!')
 
     @staticmethod
@@ -97,6 +98,6 @@ class DDPGTorcs:
                         epsilon=epsilon, noise=noise)
 
     @staticmethod
-    def test(reward_writer, load_file_path, track='g-track-1', gui=False, nb_max_episode_steps=10000):
+    def test(reward_writer, load_file_path, track='g-track-1', gui=True, nb_max_episode_steps=10000):
         return DDPGTorcs.__run(reward_writer, load=True, gui=gui, load_file_path=load_file_path, track=track,
                                epsilon=0, nb_max_episode_steps=nb_max_episode_steps, noise=1)

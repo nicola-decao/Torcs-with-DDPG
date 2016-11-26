@@ -136,5 +136,4 @@ crashlytics-build.properties
 fabric.properties
 
 .idea/
-reference_code/
-training_datasets/
+runs/
