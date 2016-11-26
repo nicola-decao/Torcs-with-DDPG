@@ -11,7 +11,7 @@ from gym.core import Env
 
 import track_utilities
 from rewards import DefaultReward
-from time_speedup import speed_up_time
+from utilities.time_speedup import speed_up_time
 
 
 class TorcsEnv(Env):
