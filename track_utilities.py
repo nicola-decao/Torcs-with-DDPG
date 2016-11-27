@@ -1,5 +1,7 @@
 import json
 import os
+from time import sleep
+import numpy as np
 
 from ddpg_torcs import DDPGTorcs
 from utilities.reward_writer import RewardWriter
@@ -156,7 +158,7 @@ class TrackUtilities:
 
     @staticmethod
     def train_on_single_track(root_dir, track='aalborg', epsilon=0.5, steps=500000, load=False, load_filepath='',
-                              noise=1):
+                              noise=1, max_speed=None, n_lap=None):
         root_dir = 'runs/' + root_dir
         rewards_filepath = root_dir + '/rewards.csv'
 
@@ -175,11 +177,59 @@ class TrackUtilities:
 
         DDPGTorcs.train(reward_writer, load=load, gui=gui, save=save, track=track, nb_steps=steps,
                         load_file_path=load_filepath,
-                        save_file_path=save_file_path, verbose=1, timeout=40000, epsilon=epsilon, noise=noise)
+                        save_file_path=save_file_path, verbose=1, timeout=40000, epsilon=epsilon, noise=noise, max_speed=max_speed, n_lap=n_lap)
 
         reward_writer.completed_track()
         print()
         print()
+
+    def curriculum_learning_on_track(self, track,root_dir, initial_speed=30, initial_epsilon=0.5):
+        speed = initial_speed
+        epsilon = initial_epsilon
+
+        def action_limit_function(speed, action, observation):
+            if observation[21] * 300 > speed:
+                action[1] -= 1.5
+            return action
+
+        root_dir = 'runs/' + root_dir + '/'
+        rewards_filepath = root_dir + 'rewards.csv'
+        remaining_tracks_filepath = root_dir + 'tracks_to_test.json'
+        last_network_filepath = root_dir + 'last_network.txt'
+
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir)
+            load_filepath = ''
+            i = 0
+        else:
+            load_filepath, i = TrackUtilities.load_last_network_path(last_network_filepath)
+
+        reward_writer = RewardWriter(rewards_filepath)
+
+        save_filepath = load_filepath
+
+        while speed < 350:
+            # try:
+            load_filepath = save_filepath
+            save_filepath = root_dir + str(i) + '_' + track + '_speed' + str(speed) + '.h5f'
+
+            reward_writer.write_track(track, epsilon)
+
+            print('Epsilon:', epsilon)
+            DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
+                            load_file_path=load_filepath, save_file_path=save_filepath,
+                            verbose=1, timeout=40000, epsilon=epsilon, action_limit_function=lambda a, s: action_limit_function(speed,a,s), nb_steps=1000000,
+                            nb_max_episode_steps=1000000, n_lap=2)
+
+            reward_writer.completed_track()
+            print()
+            print()
+            # except:
+            #     pass
+            speed += 5
+            #epsilon *= 0.9
+
+
 
     @staticmethod
     def create_tracks_list(chosen_tracks, epsilons):

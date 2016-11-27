@@ -47,9 +47,9 @@ class DDPGTorcs:
     @staticmethod
     def __run(reward_writer, load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000,
               track='g-track-1',
-              verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0, noise=1):
+              verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0, noise=1, limit_action=None, n_lap=None):
 
-        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=DefaultReward())
+        env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=DefaultReward(), n_lap=n_lap)
 
         actor = DDPGTorcs.__get_actor(env)
         critic, action_input = DDPGTorcs.__get_critic(env)
@@ -66,7 +66,8 @@ class DDPGTorcs:
                           actor=actor, critic=critic,
                           critic_action_input=action_input,
                           memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                          random_process=random_process, gamma=GAMMA, target_model_update=TAU)
+                          random_process=random_process, gamma=GAMMA, target_model_update=TAU,
+                          limit_action=limit_action)
 
         agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
         if load:
@@ -88,13 +89,13 @@ class DDPGTorcs:
     @staticmethod
     def train(reward_writer, load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000,
               track='g-track-1',
-              verbose=0, nb_steps=30000, nb_max_episode_steps=50000, epsilon=1.0, noise=1):
+              verbose=0, nb_steps=30000, nb_max_episode_steps=50000, epsilon=1.0, noise=1, action_limit_function=None, n_lap=None):
 
         DDPGTorcs.__run(reward_writer, load=load, save=save, gui=gui, load_file_path=load_file_path,
                         save_file_path=save_file_path,
                         timeout=timeout, track=track,
                         verbose=verbose, nb_steps=nb_steps, nb_max_episode_steps=nb_max_episode_steps, train=True,
-                        epsilon=epsilon, noise=noise)
+                        epsilon=epsilon, noise=noise, limit_action=action_limit_function, n_lap=n_lap)
 
     @staticmethod
     def test(reward_writer, load_file_path, track='g-track-1', gui=True, nb_max_episode_steps=10000):

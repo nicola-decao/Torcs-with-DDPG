@@ -92,15 +92,18 @@ class Agent(object):
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
                 action = self.forward(observation)
-                # if observation[21]*300 > 200:
-                #     action[1] = 0
+
                 reward = 0.
                 done = False
                 for _ in range(action_repetition):
                     callbacks.on_action_begin(action)
-                    observation, r, done, _ = env.step(action)
+                    observation, r, stop, _ = env.step(action)
+                    done, quit_loop = stop
                     callbacks.on_action_end(action)
                     reward += r
+                    if quit_loop:
+                        env.close()
+                        return history
 
                     if done:
                         break
@@ -162,6 +165,7 @@ class Agent(object):
         pass
 
     def _on_train_end(self):
+        self.env
         pass
 
     def test(self, env, nb_episodes=1, action_repetition=1, callbacks=None, visualize=True,

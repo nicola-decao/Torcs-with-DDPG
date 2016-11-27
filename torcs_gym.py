@@ -15,7 +15,7 @@ from utilities.time_speedup import speed_up_time
 
 
 class TorcsEnv(Env):
-    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True, timeout=10000, reward=None):
+    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True, timeout=10000, reward=None, n_lap=None):
         # TODO fix gui=False
 
         self.gui = gui
@@ -28,9 +28,10 @@ class TorcsEnv(Env):
         self.__gear = 0
         self.__last_rmp = 0
         self.__time_stop = 0
-        self.__star_point = 0
-        self.__lap = False
+        self.__start_point = 0
+        self.__lap_number = 0
         self.__start_first_lap = False
+        self.__n_lap = n_lap
 
         if reward:
             self.__reward = reward
@@ -41,7 +42,7 @@ class TorcsEnv(Env):
         self.observation_space = spaces.Box(low=0, high=0, shape=(29,))
 
     def did_one_lap(self):
-        return self.__lap
+        return self.__lap_number > 0
 
     def _reset(self):
         if self.gui:
@@ -54,13 +55,13 @@ class TorcsEnv(Env):
         self.__gear = 0
         self.__last_rmp = 0
         self.__time_stop = 0
-        self.__lap = False
+        self.__lap_number = 0
         self.__start_first_lap = False
 
         #time.sleep(0.1)
 
         sensors = self.client.step()
-        self.__star_point = sensors['distFromStart'] - 10
+        self.__start_point = sensors['distFromStart'] - 10
         return self.__encode_state_data(sensors)
 
     def get_minimum_reward(self):
@@ -72,7 +73,8 @@ class TorcsEnv(Env):
             self.__time_stop += 1
         else:
             self.__time_stop = 0
-        return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99 or sensors['damage'] > 0
+        return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99 \
+               or sensors['damage'] > 0, self.__n_lap and self.__lap_number == self.__n_lap
 
     def _step(self, action):
         a = self.__decode_action_data(action)
@@ -101,11 +103,12 @@ class TorcsEnv(Env):
         reward = self.__reward.reward(sensors)
         done = self.__check_done(sensors)
 
-        if 0 < sensors['distFromStart'] < 100:
+        if 100 < sensors['distFromStart'] < 200:
             self.__start_first_lap = True
 
-        if self.__start_first_lap and sensors['distFromStart'] > self.__star_point:
-            self.__lap = True
+        if self.__start_first_lap and 100 > sensors['distFromStart'] > 0:
+            self.__lap_number += 1
+            self.__start_first_lap = False
 
         return observation, reward, done, {}
 
@@ -132,6 +135,9 @@ class TorcsEnv(Env):
         state[24:28] = np.array(sensors['wheelSpinVel']) / 100.0
         state[28] = sensors['rpm'] / 10000.0
         return state
+
+    def _close(self):
+        os.system('pkill torcs')
 
     class Server:
 
