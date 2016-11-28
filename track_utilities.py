@@ -183,7 +183,8 @@ class TrackUtilities:
         print()
         print()
 
-    def curriculum_learning_on_track(self, track,root_dir, initial_speed=30, initial_epsilon=0.5):
+    @staticmethod
+    def curriculum_learning_on_track(track,root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5):
         speed = initial_speed
         epsilon = initial_epsilon
 
@@ -208,7 +209,7 @@ class TrackUtilities:
 
         save_filepath = load_filepath
 
-        while speed < 350:
+        while speed < max_speed:
             # try:
             load_filepath = save_filepath
             save_filepath = root_dir + str(i) + '_' + track + '_speed' + str(speed) + '.h5f'
@@ -226,7 +227,7 @@ class TrackUtilities:
             print()
             # except:
             #     pass
-            speed += 5
+            speed += speed_step
             #epsilon *= 0.9
 
 
