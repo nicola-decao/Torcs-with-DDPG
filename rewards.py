@@ -1,5 +1,28 @@
 import numpy as np
-import time
+
+
+class DefaultReward:
+    def reward(self, sensors):
+        damage = sensors['damage']
+        angle = sensors['angle']
+        speed_x = sensors['speedX']
+        speed_y = sensors['speedY']
+        track_pos = sensors['trackPos']
+        abs_track_pos = np.abs(track_pos)
+        cosine = np.cos(angle)
+        abs_sine = np.abs(np.sin(angle))
+
+        if track_pos > 0.99 or damage > 0:
+            reward = -500
+        else:
+            reward = (speed_x - np.abs(speed_y)) * (
+                cosine
+                - abs_sine
+                - abs_track_pos)
+        return reward
+
+    def get_minimum_reward(self):
+        return -500
 
 
 class ProgressiveSmoothingReward:
@@ -12,7 +35,8 @@ class ProgressiveSmoothingReward:
         self.__previous_speed = 0
 
     def reward(self, observation):
-        positioning_score = - observation['speedX']*(np.abs(observation['trackPos']) ** self.__smoothing) * (np.abs(np.sin(observation['angle'])))
+        positioning_score = - observation['speedX'] * (np.abs(observation['trackPos']) ** self.__smoothing) * (
+        np.abs(np.sin(observation['angle'])))
         if self.__max_smoothing > self.__smoothing:
             self.__smoothing += self.__smoothing_factor
 
@@ -25,39 +49,26 @@ class ProgressiveSmoothingReward:
 
 class HitReward:
     def __init__(self):
-        self.__lastDFS = 0
-        self.__last_diff = 0
-        self.__last_time = 0
-        self.__last_damage = 0
+        self.__exit_reward = -10000
+        self.__idle_reward = -5
+
+    def get_minimum_reward(self):
+        return self.__exit_reward
 
     def reward(self, sensors):
-        current_time = time.time()
-        if self.__last_time == 0:
-            time_diff = 0
+        damage = sensors['damage']
+        angle = sensors['angle']
+        speed = sensors['speedX']
+        track_pos = sensors['trackPos']
+        abs_track_pos = np.abs(track_pos)
+
+        if abs_track_pos > 0.99 or damage > 0:
+            reward = min(self.__exit_reward + sensors['distRaced'], 0)
+        elif speed < 5:
+            reward = self.__idle_reward
         else:
-            time_diff = current_time - self.__last_time
+            cosine = np.cos(angle)
+            abs_sine = np.abs(np.sin(angle))
 
-        diff = (sensors['distFromStart'] - self.__lastDFS)
-        damage_diff = sensors['damage'] - self.__last_damage
-        self.__last_damage = sensors['damage']
-
-        if diff > 10 or diff < 0:
-            diff = self.__last_diff
-        self.__last_diff = diff
-
-        self.__lastDFS = sensors['distFromStart']
-        if time_diff == 0:
-            reward = 0
-        elif np.abs(sensors['trackPos']) > 0.99:
-            reward = -10000
-        elif damage_diff > 0:
-            reward = -1000*damage_diff
-        elif sensors['speedX'] < 1:
-            reward = -5
-        else:
-            reward = diff / time_diff * (
-                np.cos(sensors['angle'])
-                - np.abs(np.sin(sensors['angle']))
-                - np.abs(sensors['trackPos']) ** 5)
-        self.__last_time = current_time
+            reward = 0.1 * speed * (cosine - abs_sine - abs_track_pos)
         return reward

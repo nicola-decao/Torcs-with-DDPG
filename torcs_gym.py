@@ -10,11 +10,12 @@ from gym import spaces
 from gym.core import Env
 
 import track_utilities
-from time_speedup import speed_up_time
+from rewards import DefaultReward
+from utilities.time_speedup import speed_up_time
 
 
 class TorcsEnv(Env):
-    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True, timeout=10000, reward=None):
+    def __init__(self, host='localhost', port=3001, sid='SCR', track='g-track-1', gui=True, timeout=10000, reward=None, n_lap=None):
         # TODO fix gui=False
 
         self.gui = gui
@@ -27,20 +28,21 @@ class TorcsEnv(Env):
         self.__gear = 0
         self.__last_rmp = 0
         self.__time_stop = 0
-        self.__star_point = 0
-        self.__lap = False
+        self.__start_point = 0
+        self.__lap_number = 0
         self.__start_first_lap = False
+        self.__n_lap = n_lap
 
         if reward:
             self.__reward = reward
         else:
-            self.__reward = self.__default_reward
+            self.__reward = DefaultReward()
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
         self.observation_space = spaces.Box(low=0, high=0, shape=(29,))
 
     def did_one_lap(self):
-        return self.__lap
+        return self.__lap_number > 0
 
     def _reset(self):
         if self.gui:
@@ -53,32 +55,26 @@ class TorcsEnv(Env):
         self.__gear = 0
         self.__last_rmp = 0
         self.__time_stop = 0
-        self.__lap = False
+        self.__lap_number = 0
         self.__start_first_lap = False
 
-        time.sleep(0.1)
+        #time.sleep(0.1)
 
         sensors = self.client.step()
-        self.__star_point = sensors['distFromStart'] - 10
+        self.__start_point = sensors['distFromStart'] - 10
         return self.__encode_state_data(sensors)
 
-    @staticmethod
-    def __default_reward(sensors):
-        if np.abs(sensors['trackPos']) > 0.99:
-            reward = -200
-        else:
-            reward = sensors['speedX'] * (
-                np.cos(sensors['angle'])
-                - np.abs(np.sin(sensors['angle']))
-                - np.abs(sensors['trackPos']))
-        return reward
+    def get_minimum_reward(self):
+        return self.__reward.get_minimum_reward()
+
 
     def __check_done(self, sensors):
         if sensors['speedX'] < self.__termination_limit_progress:
             self.__time_stop += 1
         else:
             self.__time_stop = 0
-        return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99
+        return self.__time_stop > self.__terminal_judge_start or np.abs(sensors['trackPos']) > 0.99 \
+               or sensors['damage'] > 0, self.__n_lap and self.__lap_number == self.__n_lap
 
     def _step(self, action):
         a = self.__decode_action_data(action)
@@ -104,14 +100,15 @@ class TorcsEnv(Env):
             self.__last_rmp = sensors['rpm']
 
         observation = self.__encode_state_data(sensors)
-        reward = self.__reward(sensors)
+        reward = self.__reward.reward(sensors)
         done = self.__check_done(sensors)
 
-        if 0 < sensors['distFromStart'] < 100:
+        if 100 < sensors['distFromStart'] < 200:
             self.__start_first_lap = True
 
-        if self.__start_first_lap and sensors['distFromStart'] > self.__star_point:
-            self.__lap = True
+        if self.__start_first_lap and 100 > sensors['distFromStart'] > 0:
+            self.__lap_number += 1
+            self.__start_first_lap = False
 
         return observation, reward, done, {}
 
@@ -139,6 +136,9 @@ class TorcsEnv(Env):
         state[28] = sensors['rpm'] / 10000.0
         return state
 
+    def _close(self):
+        os.system('pkill torcs')
+
     class Server:
 
         def __init__(self, track, track_type, gui, timeout=10000):
@@ -154,23 +154,21 @@ class TorcsEnv(Env):
 
         def __init_server(self):
             os.system('pkill torcs')
-            time.sleep(0.1)
+            time.sleep(0.001)
             if self.__gui:
                 if self.__cmd_exists('optirun'):
-                    os.system('optirun torcs -nofuel -nolaptime -t {} >/dev/null &'.format(self.__timeout))
+                    os.system('optirun torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
                 else:
-                    os.system('torcs -nofuel -nolaptime -t {} >/dev/null &'.format(self.__timeout))
+                    os.system('torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
                 time.sleep(2)
-                os.system('sh autostart.sh')
+                os.system('sh utilities/autostart.sh')
             else:
                 os.system('torcs -nofuel -nolaptime -r ' + self.__quickrace_xml_path + ' >/dev/null &')
             # print('Server created!')
-            time.sleep(0.1)
+            time.sleep(0.001)
 
         def restart(self):
             # print('Restarting __server...')
-            os.system('pkill torcs')
-            time.sleep(0.2)
             self.__init_server()
 
         def __create_race_xml(self, track, track_type):

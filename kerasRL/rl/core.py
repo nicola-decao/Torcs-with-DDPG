@@ -1,9 +1,11 @@
 import warnings
 
 import numpy as np
+import time
 from keras.callbacks import History
 
 from kerasRL.rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLogger, Visualizer, CallbackList
+import math
 
 
 class Agent(object):
@@ -90,20 +92,31 @@ class Agent(object):
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
                 action = self.forward(observation)
+
                 reward = 0.
                 done = False
                 for _ in range(action_repetition):
                     callbacks.on_action_begin(action)
-                    observation, r, done, _ = env.step(action)
+                    observation, r, stop, _ = env.step(action)
+                    done, quit_loop = stop
                     callbacks.on_action_end(action)
                     reward += r
+                    if quit_loop:
+                        env.close()
+                        return history
+
                     if done:
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     # Force a terminal state.
                     done = True
-                metrics = self.backward(reward, terminal=done)
+
                 episode_reward += reward
+
+                if episode_reward < env.get_minimum_reward():
+                    episode_reward = env.get_minimum_reward()
+                else:
+                    metrics = self.backward(reward, terminal=done)
 
                 step_logs = {
                     'action': action,
