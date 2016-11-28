@@ -33,6 +33,10 @@ class TorcsEnv(Env):
         self.__start_first_lap = False
         self.__n_lap = n_lap
 
+        self.__dist_raced = 0
+        self.__mean_speed = 0
+        self.__sum_speed = np.array([])
+
         if reward:
             self.__reward = reward
         else:
@@ -58,6 +62,10 @@ class TorcsEnv(Env):
         self.__lap_number = 0
         self.__start_first_lap = False
 
+        self.__dist_raced = 0
+        self.__mean_speed = 0
+        self.__sum_speed = np.array([])
+
         #time.sleep(0.1)
 
         sensors = self.client.step()
@@ -67,6 +75,8 @@ class TorcsEnv(Env):
     def get_minimum_reward(self):
         return self.__reward.get_minimum_reward()
 
+    def get_mean_speed_dist_raced(self):
+        return self.__mean_speed, self.__dist_raced
 
     def __check_done(self, sensors):
         if sensors['speedX'] < self.__termination_limit_progress:
@@ -110,6 +120,9 @@ class TorcsEnv(Env):
             self.__lap_number += 1
             self.__start_first_lap = False
 
+        self.__dist_raced = sensors['distRaced']
+        self.__sum_speed = np.append(self.__sum_speed, sensors['speedX'])
+        self.__mean_speed = np.mean(self.__sum_speed)
         return observation, reward, done, {}
 
     @staticmethod

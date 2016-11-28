@@ -144,7 +144,8 @@ class Agent(object):
                         'nb_episode_steps': episode_step,
                         'nb_steps': self.step,
                     }
-                    reward_writer.write_reward(episode_reward, episode_step)
+                    mean_speed, dist_raced = env.get_mean_speed_dist_raced()
+                    reward_writer.write_reward(episode_reward, episode_step, mean_speed, dist_raced)
                     callbacks.on_episode_end(episode, episode_logs)
 
                     episode += 1

@@ -11,8 +11,8 @@ class RewardWriter:
         print('', file=self.f)
         self.flush()
 
-    def write_reward(self, episode_reward, steps):
-        print("{0:.4f}".format(episode_reward) + ', ' + str(steps) + ', ' + "{0:.4f}".format(episode_reward / steps),
+    def write_reward(self, episode_reward, steps, mean_speed, dist_raced):
+        print("{0:.4f}".format(episode_reward / steps) + ', ' + str(mean_speed) + ', ' + "{0:.4f}".format(dist_raced),
               file=self.f)
         self.flush()
 
