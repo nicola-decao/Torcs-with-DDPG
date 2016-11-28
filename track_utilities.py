@@ -220,7 +220,7 @@ class TrackUtilities:
             DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
                             load_file_path=load_filepath, save_file_path=save_filepath,
                             verbose=1, timeout=40000, epsilon=epsilon, action_limit_function=lambda a, s: action_limit_function(speed,a,s), nb_steps=1000000,
-                            nb_max_episode_steps=1000000, n_lap=2)
+                            nb_max_episode_steps=1000000, n_lap=1)
 
             reward_writer.completed_track()
             print()

@@ -7,7 +7,7 @@ from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from noises import ExplorationNoise
-from rewards import DefaultReward
+from rewards import DefaultReward, SimplestReward
 from torcs_gym import TorcsEnv
 
 GAMMA = 0.99
