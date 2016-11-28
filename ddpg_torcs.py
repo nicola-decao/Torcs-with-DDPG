@@ -2,6 +2,7 @@ import numpy as np
 from keras.layers import Dense, Flatten, Input, merge
 from keras.models import Model
 from keras.optimizers import Adam
+import os
 
 from kerasRL.rl.agents import DDPGAgent
 from kerasRL.rl.memory import SequentialMemory
