@@ -9,7 +9,7 @@ class ExplorationNoise:
         self.__accel_brake = accel_brake
         self.__noise = noise
 
-    def sample(self, state):
+    def sample(self):
         self.__noise -= self.__step
         ab = self.__accel_brake.sample()[0]
         return self.__noise * self.__epsilon * np.array([self.__steer.sample()[0], ab])

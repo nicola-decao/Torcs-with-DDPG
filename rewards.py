@@ -13,16 +13,16 @@ class DefaultReward:
         abs_sine = np.abs(np.sin(angle))
 
         if track_pos > 0.99 or damage > 0:
-            reward = -500
+            reward = -1
         else:
-            reward = (speed_x - np.abs(speed_y)) * (
+            reward = (speed_x) * (
                 cosine
                 - abs_sine
-                - abs_track_pos)
-        return reward
+                -abs_track_pos)
+        return reward/10.
 
     def get_minimum_reward(self):
-        return -500
+        return -1
 
 
 class ProgressiveSmoothingReward:

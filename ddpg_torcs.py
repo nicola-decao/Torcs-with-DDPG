@@ -9,7 +9,6 @@ from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from noises import ExplorationNoise
 from rewards import DefaultReward
-from torcs_gym import TorcsEnv
 
 GAMMA = 0.99
 TAU = 1e-3
@@ -20,9 +19,9 @@ class DDPGTorcs:
     @staticmethod
     def __get_actor(observation_shape, action_shape):
         observation_input = Input(shape=(1,) + observation_shape)
-        h0 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
-        h1 = Dense(200, activation='relu', init='he_normal')(h0)
-        output = Dense(action_shape[0], activation='tanh', init='he_normal')(h1)
+        h0 = Dense(200, activation='relu', init='zero')(Flatten()(observation_input))
+        h1 = Dense(200, activation='relu', init='zero')(h0)
+        output = Dense(action_shape[0], activation='tanh', init='zero')(h1)
         return Model(input=observation_input, output=output)
 
     @staticmethod
