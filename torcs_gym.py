@@ -33,13 +33,17 @@ class TorcsEnv(Env):
         self.__start_first_lap = False
         self.__n_lap = n_lap
 
+        self.__last_speedX = 0
+        self.__last_speedY = 0
+        self.__last_speedZ = 0
+
         if reward:
             self.__reward = reward
         else:
             self.__reward = DefaultReward()
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
-        self.observation_space = spaces.Box(low=0, high=0, shape=(29,))
+        self.observation_space = spaces.Box(low=0, high=0, shape=(32,))
 
     def did_one_lap(self):
         return self.__lap_number > 0
@@ -57,6 +61,9 @@ class TorcsEnv(Env):
         self.__time_stop = 0
         self.__lap_number = 0
         self.__start_first_lap = False
+        self.__last_speedX = 0
+        self.__last_speedY = 0
+        self.__last_speedZ = 0
 
         #time.sleep(0.1)
 
@@ -134,6 +141,13 @@ class TorcsEnv(Env):
         state[23] = sensors['speedZ'] / 300.0
         state[24:28] = np.array(sensors['wheelSpinVel']) / 100.0
         state[28] = sensors['rpm'] / 10000.0
+        state[29] = state[21] - self.__last_speedX
+        state[30] = state[22] - self.__last_speedY
+        state[31] = state[23] - self.__last_speedZ
+
+        self.__last_speedX = state[21]
+        self.__last_speedY = state[22]
+        self.__last_speedZ = state[23]
         return state
 
     def _close(self):
