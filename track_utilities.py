@@ -184,7 +184,7 @@ class TrackUtilities:
         print()
 
     @staticmethod
-    def curriculum_learning_on_track(track,root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5):
+    def curriculum_learning_on_track(track,root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5, n_lap=2, validation_lap_number=3):
         speed = initial_speed
         epsilon = initial_epsilon
 
@@ -220,7 +220,7 @@ class TrackUtilities:
             DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
                             load_file_path=load_filepath, save_file_path=save_filepath,
                             verbose=1, timeout=40000, epsilon=epsilon, action_limit_function=lambda a, s: action_limit_function(speed,a,s), nb_steps=1000000,
-                            nb_max_episode_steps=1000000, n_lap=2)
+                            nb_max_episode_steps=1000000, n_lap=n_lap)
 
             reward_writer.completed_track()
             print()
@@ -229,6 +229,11 @@ class TrackUtilities:
             #     pass
             speed += speed_step
             #epsilon *= 0.9
+        DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
+                        load_file_path=load_filepath, save_file_path=save_filepath,
+                        verbose=1, timeout=40000, epsilon=epsilon,
+                        action_limit_function=lambda a, s: action_limit_function(speed, a, s), nb_steps=1000000,
+                        nb_max_episode_steps=1000000, n_lap=validation_lap_number)
 
 
 
