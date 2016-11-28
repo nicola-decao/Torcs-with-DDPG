@@ -231,8 +231,7 @@ class TrackUtilities:
             #epsilon *= 0.9
         DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
                         load_file_path=load_filepath, save_file_path=save_filepath,
-                        verbose=1, timeout=40000, epsilon=epsilon,
-                        action_limit_function=lambda a, s: action_limit_function(speed, a, s), nb_steps=1000000,
+                        verbose=1, timeout=40000, epsilon=0, nb_steps=1000000,
                         nb_max_episode_steps=1000000, n_lap=validation_lap_number)
 
 
