@@ -165,7 +165,6 @@ class Agent(object):
         pass
 
     def _on_train_end(self):
-        self.env
         pass
 
     def test(self, env, nb_episodes=1, action_repetition=1, callbacks=None, visualize=True,

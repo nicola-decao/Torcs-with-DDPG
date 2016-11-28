@@ -223,6 +223,8 @@ class TrackUtilities:
                             nb_max_episode_steps=1000000, n_lap=n_lap)
 
             reward_writer.completed_track()
+            TrackUtilities.save_last_network_path(last_network_filepath, save_filepath, 0)
+
             print()
             print()
             # except:
@@ -234,7 +236,7 @@ class TrackUtilities:
                         verbose=1, timeout=40000, epsilon=0, nb_steps=1000000,
                         nb_max_episode_steps=1000000, n_lap=validation_lap_number)
 
-
+        TrackUtilities.save_last_network_path(last_network_filepath, save_filepath, 0)
 
     @staticmethod
     def create_tracks_list(chosen_tracks, epsilons):
