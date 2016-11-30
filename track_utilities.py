@@ -78,10 +78,9 @@ class TrackUtilities:
         if os.path.isfile(track_filename):
             with open(track_filename) as f:
                 network_name = f.readline().replace('\n', '')
-                i = f.readline()
-                return network_name, int(i)
+                return network_name
         else:
-            return '', 0
+            return ''
 
     @staticmethod
     def save_last_network_path(last_network_file_path, save_file_path):
@@ -184,7 +183,7 @@ class TrackUtilities:
         print()
 
     @staticmethod
-    def curriculum_learning_on_track(track,root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5, n_lap=2, validation_lap_number=3):
+    def curriculum_learning_on_track(track, root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5, n_lap=2, validation_lap_number=3):
         speed = initial_speed
         epsilon = initial_epsilon
         last_working_network_filepath = ''
@@ -205,15 +204,13 @@ class TrackUtilities:
             load_filepath = ''
         else:
             load_filepath = TrackUtilities.load_last_network_path(last_network_filepath)
-
         reward_writer = RewardWriter(rewards_filepath)
 
         save_filepath = load_filepath
 
         while speed < max_speed:
             load_filepath = save_filepath
-            save_filepath = root_dir + '_' + track + '_speed' + str(speed) + '.h5f'
-
+            save_filepath = root_dir + track + '_speed' + str(speed) + '.h5f'
             reward_writer.write_track(track, epsilon)
 
             print('max_speed:', speed)
@@ -224,7 +221,6 @@ class TrackUtilities:
 
             print()
             print()
-
             if laps == n_lap:
                 reward_writer.completed_track()
                 TrackUtilities.save_last_network_path(last_network_filepath, save_filepath)

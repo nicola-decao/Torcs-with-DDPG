@@ -96,7 +96,7 @@ class DDPGTorcs:
               track='g-track-1',
               verbose=0, nb_steps=30000, nb_max_episode_steps=50000, epsilon=1.0, noise=1, action_limit_function=None, n_lap=None):
 
-        DDPGTorcs.__run(reward_writer, load=load, save=save, gui=gui, load_file_path=load_file_path,
+        return DDPGTorcs.__run(reward_writer, load=load, save=save, gui=gui, load_file_path=load_file_path,
                         save_file_path=save_file_path,
                         timeout=timeout, track=track,
                         verbose=verbose, nb_steps=nb_steps, nb_max_episode_steps=nb_max_episode_steps, train=True,
