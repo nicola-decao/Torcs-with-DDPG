@@ -4,6 +4,8 @@ from time import sleep
 import numpy as np
 
 from ddpg_torcs import DDPGTorcs
+from rewards import DefaultReward
+from torcs_gym import TorcsEnv
 from utilities.reward_writer import RewardWriter
 
 TRACK_LIST = {'aalborg': 'road',
@@ -45,7 +47,6 @@ TRACK_LIST = {'aalborg': 'road',
               'mixed-1': 'dirt',
               'mixed-2': 'dirt'}
 
-
 class TrackUtilities:
     @staticmethod
     def create_complete_tracks_list(epsilons):
@@ -83,10 +84,9 @@ class TrackUtilities:
             return '', 0
 
     @staticmethod
-    def save_last_network_path(last_network_file_path, save_file_path, i):
+    def save_last_network_path(last_network_file_path, save_file_path):
         with open(last_network_file_path, 'w+') as f:
             print(save_file_path, file=f)
-            print(str(i), file=f)
 
     @staticmethod
     def order_tracks(tracks):
@@ -177,7 +177,7 @@ class TrackUtilities:
 
         DDPGTorcs.train(reward_writer, load=load, gui=gui, save=save, track=track, nb_steps=steps,
                         load_file_path=load_filepath,
-                        save_file_path=save_file_path, verbose=1, timeout=40000, epsilon=epsilon, noise=noise, max_speed=max_speed, n_lap=n_lap)
+                        save_file_path=save_file_path, verbose=1, timeout=40000, epsilon=epsilon, noise=noise, n_lap=n_lap)
 
         reward_writer.completed_track()
         print()
@@ -187,56 +187,53 @@ class TrackUtilities:
     def curriculum_learning_on_track(track,root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5, n_lap=2, validation_lap_number=3):
         speed = initial_speed
         epsilon = initial_epsilon
+        last_working_network_filepath = ''
 
         def action_limit_function(speed, action, observation):
+            if action[1] > 1:
+                action[1] = 1
             if observation[21] * 300 > speed:
                 action[1] -= 1.5
             return action
 
         root_dir = 'runs/' + root_dir + '/'
         rewards_filepath = root_dir + 'rewards.csv'
-        remaining_tracks_filepath = root_dir + 'tracks_to_test.json'
         last_network_filepath = root_dir + 'last_network.txt'
 
         if not os.path.exists(root_dir):
             os.makedirs(root_dir)
             load_filepath = ''
-            i = 0
         else:
-            load_filepath, i = TrackUtilities.load_last_network_path(last_network_filepath)
+            load_filepath = TrackUtilities.load_last_network_path(last_network_filepath)
 
         reward_writer = RewardWriter(rewards_filepath)
 
         save_filepath = load_filepath
 
         while speed < max_speed:
-            # try:
             load_filepath = save_filepath
-            save_filepath = root_dir + str(i) + '_' + track + '_speed' + str(speed) + '.h5f'
+            save_filepath = root_dir + '_' + track + '_speed' + str(speed) + '.h5f'
 
             reward_writer.write_track(track, epsilon)
 
             print('max_speed:', speed)
-            DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
+            laps = DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
                             load_file_path=load_filepath, save_file_path=save_filepath,
-                            verbose=1, timeout=40000, epsilon=epsilon, action_limit_function=lambda a, s: action_limit_function(speed,a,s), nb_steps=1000000,
+                            verbose=1, timeout=40000, epsilon=epsilon, action_limit_function=lambda a, s: action_limit_function(speed,a,s), nb_steps=100000,
                             nb_max_episode_steps=1000000, n_lap=n_lap)
 
-            reward_writer.completed_track()
-            TrackUtilities.save_last_network_path(last_network_filepath, save_filepath, 0)
-
             print()
             print()
-            # except:
-            #     pass
-            speed += speed_step
-            #epsilon *= 0.9
-        DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
-                        load_file_path=load_filepath, save_file_path=save_filepath,
-                        verbose=1, timeout=40000, epsilon=0, nb_steps=1000000,
-                        nb_max_episode_steps=1000000, n_lap=validation_lap_number)
 
-        TrackUtilities.save_last_network_path(last_network_filepath, save_filepath, 0)
+            if laps == n_lap:
+                reward_writer.completed_track()
+                TrackUtilities.save_last_network_path(last_network_filepath, save_filepath)
+                speed += speed_step
+                last_working_network_filepath = save_filepath
+            else:
+                break
+
+        TrackUtilities.validate_network(last_working_network_filepath, track, speed-speed_step, reward_writer, n_lap = validation_lap_number)
 
     @staticmethod
     def create_tracks_list(chosen_tracks, epsilons):
@@ -297,3 +294,57 @@ class TrackUtilities:
     @staticmethod
     def test_network(track, load_filepath):
         DDPGTorcs.test(None, load_filepath, track=track)
+
+    @staticmethod
+    def test_ensemble(models_filepaths, track, n_lap):
+        env = TorcsEnv(gui=True, timeout=40000, track=track, reward=DefaultReward(), n_lap=n_lap)
+
+        accel_dump = open('dumps/accel_dump.dat', 'w')
+        steer_dump = open('dumps/steer_dump.dat', 'w')
+
+        models = []
+        for filepath in models_filepaths:
+            models.append(DDPGTorcs.get_loaded_actor(filepath, env.observation_space.shape, env.action_space.shape))
+
+        observation = env.reset()
+        while True:
+            actions = []
+            for model in models:
+                result = model.predict(np.array([np.array([observation])]))[0]
+                actions.append(result)
+            for action in actions:
+                print(action[1], file=accel_dump)
+                print(action[0], file=steer_dump)
+            print('', file=accel_dump)
+            print('', file=steer_dump)
+
+            action = TrackUtilities.avg_min_elaboration(actions)
+            observation, reward, done, d = env.step(action)
+
+    @staticmethod
+    def avg_min_elaboration(actions):
+        action = [0,0]
+        actions = np.array(actions)
+
+        action[0] = np.mean(actions[:,0])
+        action[1] = np.min(np.sort(actions[:,1]))
+        return action
+
+    @staticmethod
+    def validate_network(network_filepath, track, max_speed, reward_writer, n_lap=10):
+        def action_limit_function(speed, action, observation):
+            if action[1] > 1:
+                action[1] = 1
+            if observation[21] * 300 > speed:
+                action[1] -= 1.5
+            return action
+
+        load_filepath = network_filepath
+
+        save_filepath = network_filepath.split('.')[0] + '_validated.h5f'
+
+        DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
+                        load_file_path=load_filepath, save_file_path=save_filepath,
+                        verbose=1, timeout=40000, epsilon=0, nb_steps=1000000, action_limit_function=lambda a, s: action_limit_function(max_speed,a,s),
+                        nb_max_episode_steps=1000000, n_lap=n_lap)
+        reward_writer.completed_track()

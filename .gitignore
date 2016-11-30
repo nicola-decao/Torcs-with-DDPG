@@ -136,4 +136,5 @@ crashlytics-build.properties
 fabric.properties
 
 .idea/
-runs/
+runs/*
+dumps/*

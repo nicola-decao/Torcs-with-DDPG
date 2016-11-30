@@ -3,10 +3,11 @@ import numpy as np
 
 class DefaultReward:
     def reward(self, sensors):
+
         damage = sensors['damage']
         angle = sensors['angle']
         speed_x = sensors['speedX']
-        speed_y = sensors['speedY']
+        abs_speed_y = np.abs(sensors['speedY'])
         track_pos = sensors['trackPos']
         abs_track_pos = np.abs(track_pos)
         cosine = np.cos(angle)
@@ -15,7 +16,7 @@ class DefaultReward:
         if track_pos > 0.99 or damage > 0:
             reward = -500
         else:
-            reward = (speed_x - np.abs(speed_y)) * (
+            reward = (speed_x - abs_speed_y) * (
                 cosine
                 - abs_sine
                 - abs_track_pos)

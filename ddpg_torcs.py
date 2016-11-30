@@ -71,12 +71,13 @@ class DDPGTorcs:
                           random_process=random_process, gamma=GAMMA, target_model_update=TAU,
                           limit_action=limit_action)
 
-        agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mae'])
+        agent.compile((Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)), metrics=['mse'])
         if load:
             agent.load_weights(load_file_path)
         if train:
             agent.fit(env, reward_writer, nb_steps=nb_steps, visualize=False, verbose=verbose,
                       nb_max_episode_steps=nb_max_episode_steps)
+            lap_number = env.get_lap_number()
         else:
             agent.test(env, visualize=False, nb_max_episode_steps=nb_max_episode_steps)
             return env.did_one_lap()
@@ -87,6 +88,8 @@ class DDPGTorcs:
             print('Noise:', random_process.get_noise())
             print('steps:', agent.step, '/', nb_steps, '-', nb_steps-agent.step)
             print('Saved!')
+
+        return lap_number
 
     @staticmethod
     def train(reward_writer, load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000,
@@ -115,3 +118,9 @@ class DDPGTorcs:
     def convert_h5f_to_dl4j(self, h5f_filepath, export_filepath):
         actor = self.__load_actor_network(h5f_filepath)
         self.__export_dl4j(actor, export_filepath)
+
+    @staticmethod
+    def get_loaded_actor(filepath, observation_space, action_space):
+        actor = DDPGTorcs.__get_actor(observation_space, action_space)
+        actor.load_weights(filepath)
+        return actor

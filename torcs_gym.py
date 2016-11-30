@@ -48,6 +48,9 @@ class TorcsEnv(Env):
     def did_one_lap(self):
         return self.__lap_number > 0
 
+    def get_lap_number(self):
+        return self.__lap_number
+
     def _reset(self):
         if self.gui:
             self.client.send_restart_request()
@@ -169,10 +172,10 @@ class TorcsEnv(Env):
             os.system('pkill torcs')
             time.sleep(0.001)
             if self.__gui:
-                if self.__cmd_exists('optirun'):
-                    os.system('optirun torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
-                else:
-                    os.system('torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
+                # if self.__cmd_exists('optirun'):
+                #     os.system('optirun torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
+                # else:
+                os.system('torcs -nofuel -nolaptime -s -t {} >/dev/null &'.format(self.__timeout))
                 time.sleep(2)
                 os.system('sh utilities/autostart.sh')
             else:
