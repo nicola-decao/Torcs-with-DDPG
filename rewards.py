@@ -18,7 +18,7 @@ class DefaultReward:
             reward = (speed_x - np.abs(speed_y)) * (
                 cosine
                 - abs_sine
-                - abs_track_pos)
+                - abs_track_pos**4)
         return reward
 
     def get_minimum_reward(self):

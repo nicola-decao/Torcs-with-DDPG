@@ -22,7 +22,8 @@ class DDPGTorcs:
         observation_input = Input(shape=(1,) + observation_shape)
         h0 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
         h1 = Dense(200, activation='relu', init='he_normal')(h0)
-        output = Dense(action_shape[0], activation='tanh', init='he_normal')(h1)
+        h2 = Dense(200, activation='relu', init='he_normal')(h1)
+        output = Dense(action_shape[0], activation='tanh', init='he_normal')(h2)
         return Model(input=observation_input, output=output)
 
     @staticmethod
@@ -30,12 +31,13 @@ class DDPGTorcs:
         action_input = Input(shape=(action_shape[0],))
         observation_input = Input(shape=(1,) + observation_shape)
 
-        w1 = Dense(100, activation='relu', init='he_normal')(Flatten()(observation_input))
-        a1 = Dense(100, activation='linear', init='he_normal')(action_input)
-        h1 = Dense(100, activation='linear', init='he_normal')(w1)
+        w1 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
+        a1 = Dense(200, activation='linear', init='he_normal')(action_input)
+        h1 = Dense(200, activation='linear', init='he_normal')(w1)
         h2 = merge([h1, a1], mode='sum')
-        h3 = Dense(100, activation='relu', init='he_normal')(h2)
-        output = Dense(1, activation='linear', init='he_normal')(h3)
+        h3 = Dense(200, activation='relu', init='he_normal')(h2)
+        h4 = Dense(200, activation='relu', init='he_normal')(h3)
+        output = Dense(1, activation='linear', init='he_normal')(h4)
         return Model(input=[action_input, observation_input], output=output), action_input
 
     @staticmethod
