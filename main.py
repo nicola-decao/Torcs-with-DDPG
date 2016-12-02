@@ -1,9 +1,35 @@
 from track_utilities import TrackUtilities
+from utilities.reward_writer import RewardWriter
 
 if __name__ == "__main__":
-    TrackUtilities.curriculum_learning_on_track('e-track-2',
-                                                'e-track-2_curriculum',
-                                                initial_speed=80,
+    # TrackUtilities.curriculum_learning_on_track('eroad',
+    #                                             'eroad',
+    #                                             initial_speed=130,
+    #                                             max_speed=250,
+    #                                             speed_step=10,
+    #                                             n_lap=3,
+    #                                             validation_lap_number=10)
+    #
+    #
+    # rw = RewardWriter('runs/forza/rewards.csv')
+    #
+    # TrackUtilities.validate_network('runs/forza/forza_speed110.h5f',
+    #                                 'forza',
+    #                                 110,
+    #                                 rw,
+    #                                 n_lap=10)
+
+    # TrackUtilities.curriculum_learning_on_track('dirt-2',
+    #                                             'dirt-2',
+    #                                             initial_speed=60,
+    #                                             max_speed=250,
+    #                                             speed_step=10,
+    #                                             n_lap=3,
+    #                                             validation_lap_number=10)
+
+    TrackUtilities.curriculum_learning_on_track('aalborg',
+                                                'aalborg',
+                                                initial_speed=70,
                                                 max_speed=250,
                                                 speed_step=10,
                                                 n_lap=3,
