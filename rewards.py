@@ -2,42 +2,24 @@ import numpy as np
 
 
 class DefaultReward:
-
-    def __init__(self):
-        self.__ldfs = 0
-        self.__ldiff = 0
-
     def reward(self, sensors):
 
         damage = sensors['damage']
         angle = sensors['angle']
         speed_x = sensors['speedX']
-        # abs_speed_y = np.abs(sensors['speedY'])
+        abs_speed_y = np.abs(sensors['speedY'])
         track_pos = sensors['trackPos']
         abs_track_pos = np.abs(track_pos)
         cosine = np.cos(angle)
         abs_sine = np.abs(np.sin(angle))
 
-        if self.__ldfs == 0:
-            self.__ldfs = sensors['distFromStart']
-
-        diff = sensors['distFromStart'] - self.__ldfs
-
-        if abs(diff) > 100:
-            diff = self.__ldiff
-
-        self.__ldiff = diff
-        self.__ldfs = sensors['distFromStart']
-
         if track_pos > 0.99 or damage > 0:
             reward = -500
         else:
-            # reward = (speed_x - abs_speed_y) * (
-            # reward = speed_x * (
-            reward = 100 * diff #  * (
-            #     cosine
-            #     - abs_sine)
-                # - abs_track_pos)
+            reward = (speed_x - abs_speed_y) * (
+                cosine
+                - abs_sine
+                - abs_track_pos)
         return reward
 
     def get_minimum_reward(self):
