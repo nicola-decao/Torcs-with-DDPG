@@ -328,6 +328,7 @@ class TrackUtilities:
 
     @staticmethod
     def validate_network(network_filepath, track, max_speed, reward_writer, n_lap=10):
+        print("Validating...")
         def action_limit_function(speed, action, observation):
             if action[1] > 1:
                 action[1] = 1

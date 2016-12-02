@@ -9,7 +9,6 @@ from kerasRL.rl.memory import SequentialMemory
 from kerasRL.rl.random import OrnsteinUhlenbeckProcess
 from noises import ExplorationNoise
 from rewards import DefaultReward
-from torcs_gym import TorcsEnv
 
 GAMMA = 0.99
 TAU = 1e-3
@@ -18,7 +17,7 @@ TAU = 1e-3
 
 class DDPGTorcs:
     @staticmethod
-    def __get_actor(observation_shape, action_shape):
+    def get_actor(observation_shape, action_shape):
         observation_input = Input(shape=(1,) + observation_shape)
         h0 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
         h1 = Dense(200, activation='relu', init='he_normal')(h0)
@@ -38,22 +37,17 @@ class DDPGTorcs:
         output = Dense(1, activation='linear', init='he_normal')(h3)
         return Model(input=[action_input, observation_input], output=output), action_input
 
-    @staticmethod
-    def __export_dl4j(net, filename):
-        r = []
-        for w in net.get_weights():
-            r += np.transpose(w).flatten().tolist()
 
-        np.savetxt(filename, np.array(r))
 
     @staticmethod
     def __run(reward_writer, load=False, save=False, gui=True, load_file_path='', save_file_path='', timeout=10000,
               track='g-track-1',
               verbose=0, nb_steps=50000, nb_max_episode_steps=10000, train=False, epsilon=1.0, noise=1, limit_action=None, n_lap=None):
+        from torcs_gym import TorcsEnv
 
         env = TorcsEnv(gui=gui, timeout=timeout, track=track, reward=DefaultReward(), n_lap=n_lap)
 
-        actor = DDPGTorcs.__get_actor(env.observation_space.shape, env.action_space.shape)
+        actor = DDPGTorcs.get_actor(env.observation_space.shape, env.action_space.shape)
         critic, action_input = DDPGTorcs.__get_critic(env.observation_space.shape, env.action_space.shape)
 
         memory = SequentialMemory(limit=100000, window_length=1)
@@ -110,17 +104,13 @@ class DDPGTorcs:
     def __load_actor_network(self, filepath):
         filename, extension = os.path.splitext(filepath)
         actor_filepath = filename + '_actor' + extension
-        actor = self.__get_actor((29,), (2,))
+        actor = self.get_actor((29,), (2,))
         actor.load_weights(actor_filepath)
         actor = actor
         return actor
 
-    def convert_h5f_to_dl4j(self, h5f_filepath, export_filepath):
-        actor = self.__load_actor_network(h5f_filepath)
-        self.__export_dl4j(actor, export_filepath)
-
     @staticmethod
     def get_loaded_actor(filepath, observation_space, action_space):
-        actor = DDPGTorcs.__get_actor(observation_space, action_space)
+        actor = DDPGTorcs.get_actor(observation_space, action_space)
         actor.load_weights(filepath)
         return actor
