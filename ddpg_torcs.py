@@ -55,7 +55,7 @@ class DDPGTorcs:
         random_process = ExplorationNoise(nb_steps=nb_steps,
                                           epsilon=epsilon,
                                           steer=OrnsteinUhlenbeckProcess(theta=0.6, mu=0, sigma=0.3),
-                                          accel_brake=OrnsteinUhlenbeckProcess(theta=1.0, mu=0.5, sigma=0.3),
+                                          accel_brake=OrnsteinUhlenbeckProcess(theta=1.0, mu=-0.5, sigma=0.3),
                                           noise=noise)
 
         agent = DDPGAgent(nb_actions=env.action_space.shape[0],

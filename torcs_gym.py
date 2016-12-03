@@ -36,6 +36,7 @@ class TorcsEnv(Env):
         self.__dist_raced = 0
         self.__mean_speed = 0
         self.__sum_speed = np.array([])
+        self.__last_state = np.array([])
 
         if reward:
             self.__reward = reward
@@ -44,6 +45,22 @@ class TorcsEnv(Env):
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
         self.observation_space = spaces.Box(low=0, high=0, shape=(29,))
+
+    def __align_to_track_axis(self, state, force):
+        steerspeed = 0.8 + 0.2 * ((400.0 - state[21]) / 400.0)
+        return -min(1.0, max(-1.0, force * -15.0 * state[0] * steerspeed * np.pi))
+
+    def __move_towards_track_position(self, state, force, trackpos):
+        steerspeed = 0.8 + 0.2 * ((400.0 - state[21]) / 400.0)
+        offset = 0.2 + min(0.6, np.abs(state[20]))
+        offset *= 1.0 + 10.0 * (1.0 - steerspeed) ** 2.0
+        if state[20] < trackpos - 0.05:
+            return offset * min(1, max(-1, steerspeed * force * (state[20] - trackpos) ** 2.0)) \
+                   + (1 - offset) * self.__align_to_track_axis(state, force)
+        if state[20] > trackpos + 0.05:
+            return offset * min(1, max(-1, -steerspeed * force * (state[20] - trackpos) ** 2.0)) \
+                   + (1 - offset) * self.__align_to_track_axis(state, force)
+        return self.__align_to_track_axis(state, force * np.abs(state[0] * np.pi))
 
     def did_one_lap(self):
         return self.__lap_number > 0
@@ -68,6 +85,7 @@ class TorcsEnv(Env):
         self.__dist_raced = 0
         self.__mean_speed = 0
         self.__sum_speed = np.array([])
+        self.__last_state = np.array([])
 
         #time.sleep(0.1)
 
@@ -107,12 +125,15 @@ class TorcsEnv(Env):
 
         sensors = self.client.step(a)
 
+
         if change_gear:
             self.__last_rmp = 5000
         else:
             self.__last_rmp = sensors['rpm']
 
         observation = self.__encode_state_data(sensors)
+        self.__last_state = observation
+
         reward = self.__reward.reward(sensors)
         done = self.__check_done(sensors)
 
@@ -128,15 +149,28 @@ class TorcsEnv(Env):
         self.__mean_speed = np.mean(self.__sum_speed)
         return observation, reward, done, {}
 
-    @staticmethod
-    def __decode_action_data(actions_vec):
+    def __decode_action_data(self, actions_vec):
         actions_dic = TorcsEnv.Client.get_empty_actions()
-        actions_dic['steer'] = actions_vec[0]
 
-        if actions_vec[1] >= 0:
-            actions_dic['accel'] = actions_vec[1]
-        else:
-            actions_dic['brake'] = -actions_vec[1]
+        if self.__last_state.any():
+            actions_dic['steer'] = self.__move_towards_track_position(self.__last_state, 1, actions_vec[0]*0.9)
+            speed = (actions_vec[1] + 1) * 0.5
+
+            print('', speed, self.__last_state[21])
+
+            if self.__last_state[21] <= speed:
+                actions_dic['accel'] = 1.0
+            elif self.__last_state[21] > speed:
+                actions_dic['brake'] = 1.0
+
+        #print(' ', actions_vec[0], actions_dic['accel'], actions_dic['brake'])
+
+        # actions_dic['steer'] = actions_vec[0]
+        #
+        # if actions_vec[1] >= 0:
+        #     actions_dic['accel'] = actions_vec[1]
+        # else:
+        #     actions_dic['brake'] = -actions_vec[1]
 
         return actions_dic
 

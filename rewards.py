@@ -2,6 +2,12 @@ import numpy as np
 
 
 class DefaultReward:
+
+    def __init__(self):
+        self.__last_diff = 0
+        self.__last_dist_from_stat = None
+        self.__sum = 0
+
     def reward(self, sensors):
 
         damage = sensors['damage']
@@ -13,17 +19,28 @@ class DefaultReward:
         cosine = np.cos(angle)
         abs_sine = np.abs(np.sin(angle))
 
-        if track_pos > 0.99 or damage > 0:
-            reward = -500
+        if not self.__last_dist_from_stat:
+            self.__last_dist_from_stat = sensors['distFromStart']
+
+        diff = sensors['distFromStart'] - self.__last_dist_from_stat
+        self.__last_dist_from_stat = sensors['distFromStart']
+
+        if abs(diff) > 100:
+            diff = self.__last_diff
         else:
-            reward = (speed_x - abs_speed_y) * (
+            self.__last_diff = diff
+
+        if track_pos > 0.9 or damage > 0:
+            reward = -5000
+        else:
+            reward = 100 * diff * (
                 cosine
                 - abs_sine
                 - abs_track_pos)
         return reward
 
     def get_minimum_reward(self):
-        return -500
+        return -5000
 
 
 class ProgressiveSmoothingReward:
