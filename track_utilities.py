@@ -183,16 +183,16 @@ class TrackUtilities:
         print()
 
     @staticmethod
-    def curriculum_learning_on_track(track, root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5, n_lap=2, validation_lap_number=3):
+    def curriculum_learning_on_track(track, root_dir, initial_speed=30, initial_epsilon=0.5, max_speed=350, speed_step=5, n_lap=2, validation_lap_number=3, nb_steps=300000):
         speed = initial_speed
         epsilon = initial_epsilon
         last_working_network_filepath = ''
 
         def action_limit_function(speed, action, observation):
-            if action[1] > 1:
-                action[1] = 1
             if observation[21] * 300 > speed:
-                action[1] -= 1.5
+                action[1] = 0
+            elif observation[21] * 300 < 25:
+                action[1] = 1
             return action
 
         root_dir = 'runs/' + root_dir + '/'
@@ -216,7 +216,7 @@ class TrackUtilities:
             print('max_speed:', speed)
             laps = DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
                             load_file_path=load_filepath, save_file_path=save_filepath,
-                            verbose=1, timeout=40000, epsilon=epsilon, action_limit_function=lambda a, s: action_limit_function(speed,a,s), nb_steps=100000,
+                            verbose=1, timeout=40000, epsilon=epsilon, action_limit_function=lambda a, s: action_limit_function(speed,a,s), nb_steps=nb_steps,
                             nb_max_episode_steps=1000000, n_lap=n_lap)
 
             print()
@@ -288,8 +288,14 @@ class TrackUtilities:
                 print()
 
     @staticmethod
-    def test_network(track, load_filepath):
-        DDPGTorcs.test(None, load_filepath, track=track)
+    def test_network(track, load_filepath, n_lap):
+        # DDPGTorcs.test(None, load_filepath, track=track)
+        env = TorcsEnv(gui=True, timeout=40000, track=track, reward=DefaultReward(), n_lap=n_lap)
+        model = DDPGTorcs.get_loaded_actor(load_filepath, env.observation_space.shape, env.action_space.shape)
+        observation = env.reset()
+        while True:
+            action = model.predict(np.array([np.array([observation])]))[0]
+            observation, reward, done, d = env.step(action)
 
     @staticmethod
     def test_ensemble(models_filepaths, track, n_lap):
@@ -314,17 +320,9 @@ class TrackUtilities:
             print('', file=accel_dump)
             print('', file=steer_dump)
 
-            action = TrackUtilities.avg_min_elaboration(actions)
+            # action = TrackUtilities.Elaborations.avg_min_elaboration(actions)
+            action = TrackUtilities.Elaborations.avg_avg_elaboration(actions)
             observation, reward, done, d = env.step(action)
-
-    @staticmethod
-    def avg_min_elaboration(actions):
-        action = [0,0]
-        actions = np.array(actions)
-
-        action[0] = np.mean(actions[:,0])
-        action[1] = np.min(np.sort(actions[:,1]))
-        return action
 
     @staticmethod
     def validate_network(network_filepath, track, max_speed, reward_writer, n_lap=10):
@@ -332,15 +330,46 @@ class TrackUtilities:
             if action[1] > 1:
                 action[1] = 1
             if observation[21] * 300 > speed:
-                action[1] -= 1.5
+                action[1] = 0
             return action
 
         load_filepath = network_filepath
 
         save_filepath = network_filepath.split('.')[0] + '_validated.h5f'
 
+        print('Validating with speed', max_speed)
         DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
                         load_file_path=load_filepath, save_file_path=save_filepath,
-                        verbose=1, timeout=40000, epsilon=0, nb_steps=1000000, action_limit_function=lambda a, s: action_limit_function(max_speed,a,s),
+                        verbose=1, timeout=40000, epsilon=0, nb_steps=300000, action_limit_function=lambda a, s: action_limit_function(max_speed,a,s),
                         nb_max_episode_steps=1000000, n_lap=n_lap)
         reward_writer.completed_track()
+
+    class Elaborations:
+        @staticmethod
+        def avg_min_elaboration(actions):
+            action = [0, 0]
+            steerings = np.array(actions)[:, 0]
+            accelerations = np.array(actions)[:, 1]
+
+            action[0] = np.mean(steerings)
+            action[1] = np.min(accelerations)
+            return action
+
+        @staticmethod
+        def avg_avg_elaboration(actions):
+            action = [0, 0]
+            steerings = np.array(actions)[:, 0]
+            accelerations = np.array(actions)[:, 1].tolist()
+            accelerations.pop(0)
+
+            for acceleration in accelerations:
+                if acceleration < 0:
+                    for i in range(len(accelerations)):
+                        if accelerations[i] > 0:
+                            accelerations[i] *= 0.1
+                        else:
+                            accelerations[i] *= 2
+                    break
+            action[0] = np.mean(steerings)
+            action[1] = np.mean(accelerations)
+            return action

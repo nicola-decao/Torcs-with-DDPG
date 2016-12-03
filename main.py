@@ -1,21 +1,36 @@
 from track_utilities import TrackUtilities
+from utilities.reward_writer import RewardWriter
 
 if __name__ == "__main__":
-    TrackUtilities.curriculum_learning_on_track('e-track-2',
-                                                'e-track-2_curriculum',
-                                                initial_speed=80,
+    # reward = RewardWriter('test.test')
+    # TrackUtilities.test_network('aalborg', 'aalborg_speed60_actor.h5f', n_lap=3)
+    # TrackUtilities.curriculum_learning_on_track('alpine-1',
+    #                                             'alpine-1_curriculum',
+    #                                             initial_speed=150,
+    #                                             max_speed=250,
+    #                                             speed_step=20,
+    #                                             n_lap=1,
+    #                                             validation_lap_number=3)
+    # TrackUtilities.curriculum_learning_on_track('corkscrew',
+    #                                             'corkscrew_curriculum',
+    #                                             initial_speed=140,
+    #                                             max_speed=250,
+    #                                             speed_step=20,
+    #                                             n_lap=2,
+    #                                             validation_lap_number=4)
+    TrackUtilities.curriculum_learning_on_track('alpine-2',
+                                                'alpine-2_curriculum',
+                                                initial_speed=130,
                                                 max_speed=250,
-                                                speed_step=10,
-                                                n_lap=3,
-                                                validation_lap_number=10)
-
-    # TrackUtilities.test_ensemble(['runs/a-speedway_curriculum/0_a-speedway_speed300_actor.h5f',
-    #                               'runs/alpine-1_curriculum/0_alpine-1_speed100_actor.h5f',
-    #                               'runs/corkscrew_curriculum/backup/0_corkscrew_speed180_actor.h5f',
-    #                               'runs/e-track-5_curriculum/0_e-track-5_speed300_actor.h5f',
-    #                               'runs/g-track-1_curriculum/0_g-track-1_speed210_actor.h5f',
-    #                               'runs/michigan_curriculum/0_michigan_speed310_actor.h5f',
-    #                               'runs/corkscrew_curriculum/backup/0_corkscrew_speed170_actor.h5f',
-    #                               'runs/corkscrew_curriculum/backup/0_corkscrew_speed160_actor.h5f',
+                                                speed_step=20,
+                                                n_lap=2,
+                                                validation_lap_number=5)
+    # TrackUtilities.test_ensemble(['tested/b-speedway.h5f',
+    #                              'tested/alpine-1.h5f',
+    #                               'tested/corkscrew.h5f',
+    #                               'tested/street-1.h5f',
+    #                               'tested/e-track-4.h5f',
     #                               ],
-    #                              'alpine-1', 3)
+    #                               track='brondehach',
+    #                              n_lap=3)
+    # TrackUtilities.test_network('g-track-1', 'runs/validated/g-track-1_curriculum/g-track-1_speed240_validated_actor.h5f', 3)
