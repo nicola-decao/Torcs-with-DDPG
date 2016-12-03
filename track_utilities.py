@@ -290,7 +290,7 @@ class TrackUtilities:
     @staticmethod
     def test_network(track, load_filepath, n_lap):
         # DDPGTorcs.test(None, load_filepath, track=track)
-        env = TorcsEnv(gui=True, timeout=40000, track=track, reward=DefaultReward(), n_lap=n_lap)
+        env = TorcsEnv(gui=True, timeout=10000, track=track, reward=DefaultReward(), n_lap=n_lap)
         model = DDPGTorcs.get_loaded_actor(load_filepath, env.observation_space.shape, env.action_space.shape)
         observation = env.reset()
         while True:
@@ -299,7 +299,7 @@ class TrackUtilities:
 
     @staticmethod
     def test_ensemble(models_filepaths, track, n_lap):
-        env = TorcsEnv(gui=True, timeout=40000, track=track, reward=DefaultReward(), n_lap=n_lap)
+        env = TorcsEnv(gui=True, timeout=10000, track=track, reward=DefaultReward(), n_lap=n_lap)
 
         accel_dump = open('dumps/accel_dump.dat', 'w')
         steer_dump = open('dumps/steer_dump.dat', 'w')
@@ -309,6 +309,8 @@ class TrackUtilities:
             models.append(DDPGTorcs.get_loaded_actor(filepath, env.observation_space.shape, env.action_space.shape))
 
         observation = env.reset()
+
+        sensors = open("sensors_python.dat","w")
         while True:
             actions = []
             for model in models:
@@ -323,6 +325,10 @@ class TrackUtilities:
             # action = TrackUtilities.Elaborations.avg_min_elaboration(actions)
             action = TrackUtilities.Elaborations.avg_avg_elaboration(actions)
             observation, reward, done, d = env.step(action)
+            for ob in observation:
+                sensors.write(" "+str(ob))
+            sensors.write("\n")
+
 
     @staticmethod
     def validate_network(network_filepath, track, max_speed, reward_writer, n_lap=10):
@@ -361,16 +367,16 @@ class TrackUtilities:
             action = [0, 0]
             steerings = np.array(actions)[:, 0]
             accelerations = np.array(actions)[:, 1].tolist()
-            accelerations.pop(0)
-
-            for acceleration in accelerations:
-                if acceleration < 0:
-                    for i in range(len(accelerations)):
-                        if accelerations[i] > 0:
-                            accelerations[i] *= 0.1
-                        else:
-                            accelerations[i] *= 2
-                    break
+            # accelerations.pop(0)
+            #
+            # for acceleration in accelerations:
+            #     if acceleration < 0:
+            #         for i in range(len(accelerations)):
+            #             if accelerations[i] > 0:
+            #                 accelerations[i] *= 0.1
+            #             else:
+            #                 accelerations[i] *= 2
+            #         break
             action[0] = np.mean(steerings)
-            action[1] = np.mean(accelerations)
+            action[1] = np.min(accelerations)
             return action
