@@ -352,7 +352,7 @@ class TrackUtilities:
         save_filepath = network_filepath.split('.')[0] + '_validated.h5f'
 
         print('Validating with speed', max_speed)
-        DDPGTorcs.train(reward_writer, load=True, gui=True, save=True, track=track,
+        DDPGTorcs.train(reward_writer, load=True, gui=False, save=True, track=track,
                         load_file_path=load_filepath, save_file_path=save_filepath,
                         verbose=1, timeout=40000, epsilon=0, nb_steps=300000, action_limit_function=lambda a, s: action_limit_function(max_speed,a,s),
                         nb_max_episode_steps=1000000, n_lap=n_lap)
