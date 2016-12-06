@@ -15,12 +15,12 @@ class DefaultReward:
         abs_sine = np.abs(np.sin(angle))
 
         if track_pos > 0.99 or damage > 0:
-            reward = -5 * speed_x
+            reward = -500
         else:
             reward = speed_x * (
                 cosine
                 - abs_sine
-                - abs_track_pos)
+                - abs_track_pos**4)
         return reward
 
     @staticmethod

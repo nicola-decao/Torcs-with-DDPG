@@ -179,7 +179,7 @@ class TorcsEnv(Env):
                 time.sleep(2)
                 os.system('sh utilities/autostart.sh')
             else:
-                os.system('torcs -nofuel -nolaptime -r ' + self.__quickrace_xml_path + ' >/dev/null &')
+                os.system('torcs -nofuel -nolaptime -t 50000 -r '.format(self.__timeout) + self.__quickrace_xml_path + ' >/dev/null &')
             # print('Server created!')
             time.sleep(0.001)
 
