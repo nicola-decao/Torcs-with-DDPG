@@ -2,25 +2,46 @@ import numpy as np
 
 
 class DefaultReward:
-    @staticmethod
-    def reward(sensors):
+
+    MARGIN = 0.85
+
+    def __init__(self):
+        self.__last_diff = 0
+        self.__last_dist_from_start = None
+
+    def reward(self, sensors):
 
         damage = sensors['damage']
         angle = sensors['angle']
-        speed_x = sensors['speedX']
         track_pos = sensors['trackPos']
-        abs_track_pos = np.abs(track_pos)
-        dist_raced = sensors['distRaced']
+
+        if np.abs(track_pos) < self.MARGIN:
+            abs_track_pos = 0
+        else:
+            abs_track_pos = (np.abs(track_pos) - self.MARGIN)**2 / (1-self.MARGIN)**2
+
         cosine = np.cos(angle)
         abs_sine = np.abs(np.sin(angle))
+
+        if self.__last_dist_from_start is not None:
+            diff = sensors['distFromStart'] - self.__last_dist_from_start
+        else:
+            diff = 0
+
+        if diff > 100 or diff < -100:
+            diff = self.__last_diff
+
+        self.__last_diff = diff
+        self.__last_dist_from_start = sensors['distFromStart']
 
         if track_pos > 0.99 or damage > 0:
             reward = -500
         else:
-            reward = speed_x * (
+            reward = 100 * diff * (
                 cosine
                 - abs_sine
-                - abs_track_pos**4)
+                - abs_track_pos)
+
         return reward
 
     @staticmethod
