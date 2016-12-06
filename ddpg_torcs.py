@@ -29,10 +29,10 @@ class DDPGTorcs:
         action_input = Input(shape=(action_shape[0],))
         observation_input = Input(shape=(1,) + observation_shape)
 
-        w1 = Dense(100, activation='relu', init='he_normal')(Flatten()(observation_input))
-        a1 = Dense(100, activation='linear', init='he_normal')(action_input)
-        h1 = Dense(100, activation='linear', init='he_normal')(w1)
-        h2 = merge([h1, a1], mode='sum')
+        w1 = Dense(200, activation='relu', init='he_normal')(Flatten()(observation_input))
+        a1 = Dense(200, activation='linear', init='he_normal')(action_input)
+        h1 = Dense(200, activation='linear', init='he_normal')(w1)
+        h2 = merge([h1, a1], mode='concat')
         h3 = Dense(100, activation='relu', init='he_normal')(h2)
         output = Dense(1, activation='linear', init='he_normal')(h3)
         return Model(input=[action_input, observation_input], output=output), action_input

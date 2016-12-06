@@ -157,7 +157,7 @@ class TrackUtilities:
 
     @staticmethod
     def train_on_single_track(root_dir, track='aalborg', epsilon=0.5, steps=500000, load=False, load_filepath='',
-                              noise=1, max_speed=None, n_lap=None):
+                              noise=1, n_lap=None):
         root_dir = 'runs/' + root_dir
         rewards_filepath = root_dir + '/rewards.csv'
 
@@ -189,9 +189,15 @@ class TrackUtilities:
         last_working_network_filepath = ''
 
         def action_limit_function(speed, action, observation):
-            if observation[21] * 300 > speed:
+            forward_distance = observation[10] * 200
+            speed_x = observation[21] * 300
+            breaking_space = 0.000851898 * pow(speed_x, 2) + 0.104532 * speed_x - 2.03841
+            if forward_distance < breaking_space + 15:
+                if action[1] > 0:
+                    action[1] = 0
+            elif speed_x > speed:
                 action[1] = 0
-            elif observation[21] * 300 < 25:
+            elif speed_x < 25:
                 action[1] = 1
             return action
 
@@ -293,6 +299,7 @@ class TrackUtilities:
         env = TorcsEnv(gui=True, timeout=10000, track=track, reward=DefaultReward(), n_lap=n_lap)
         model = DDPGTorcs.get_loaded_actor(load_filepath, env.observation_space.shape, env.action_space.shape)
         observation = env.reset()
+
         while True:
             action = model.predict(np.array([np.array([observation])]))[0]
             observation, reward, done, d = env.step(action)

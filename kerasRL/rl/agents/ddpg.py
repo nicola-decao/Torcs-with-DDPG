@@ -196,12 +196,14 @@ class DDPGAgent(Agent):
         if os.path.exists(actor_filepath) and os.path.exists(target_actor_filepath):
             self.actor.load_weights(actor_filepath)
             self.target_actor.load_weights(target_actor_filepath)
+            print('Actor loaded')
         else:
             self.target_actor.set_weights(self.actor.get_weights())
 
         if os.path.exists(critic_filepath) and os.path.exists(target_critic_filepath):
             self.critic.load_weights(critic_filepath)
             self.target_critic.load_weights(target_critic_filepath)
+            print('Critic loaded')
         else:
             self.target_critic.set_weights(self.critic.get_weights())
 
