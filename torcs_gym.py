@@ -36,6 +36,8 @@ class TorcsEnv(Env):
         self.__dist_raced = 0
         self.__mean_speed = 0
         self.__sum_speed = np.array([])
+        self.__last_speed = 0
+        self.__last_f = 0
 
         if reward:
             self.__reward = reward
@@ -105,7 +107,27 @@ class TorcsEnv(Env):
 
         a['gear'] = self.__gear
 
+        space = 0.000851898 * self.__last_speed ** 2 + 0.104532 * self.__last_speed - 2.03841
+
+        if self.__last_f < space + 15:
+            a['accel'] = 0
+            a['brake'] *= 1.5
+
+        if self.__last_speed > 225:
+            if a['steer'] > 0:
+                a['steer'] **= 4
+            else:
+                a['steer'] = -a['steer'] ** 4
+        elif self.__last_speed > 150:
+            if a['steer'] > 0:
+                a['steer'] **= 2
+            else:
+                a['steer'] = -a['steer'] ** 2
+
         sensors = self.client.step(a)
+
+        self.__last_speed = sensors['speedX']
+        self.__last_f = sensors['track'][9]
 
         if change_gear:
             self.__last_rmp = 5000
