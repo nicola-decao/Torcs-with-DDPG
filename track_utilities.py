@@ -189,16 +189,29 @@ class TrackUtilities:
         last_working_network_filepath = ''
 
         def action_limit_function(speed, action, observation):
-            forward_distance = observation[10] * 200
-            speed_x = observation[21] * 300
-            breaking_space = 0.000851898 * pow(speed_x, 2) + 0.104532 * speed_x - 2.03841
-            if forward_distance < breaking_space + 15:
-                if action[1] > 0:
-                    action[1] = 0
-            elif speed_x > speed:
-                action[1] = 0
-            elif speed_x < 25:
-                action[1] = 1
+            # forward_distance = observation[10] * 200
+            # speed_x = observation[21] * 300
+            # breaking_space = 0.000851898 * pow(speed_x, 2) + 0.104532 * speed_x - 2.03841
+            # if forward_distance < breaking_space + 15:
+            #     if action[1] > 0:
+            #         action[1] -= 1.0
+            #     else:
+            #         action[1] *= 1.5
+            # elif speed_x > speed:
+            #     action[1] = 0
+            # elif speed_x < 25:
+            #     action[1] = 1
+            # else:
+            #     if speed_x > 225:
+            #         if action[0] > 0:
+            #             action[0] **= 4
+            #         else:
+            #             action[0] = - (action[0] ** 4)
+            #     elif speed_x > 150:
+            #         if action[0] > 0:
+            #             action[0] **= 2
+            #         else:
+            #             action[0] = - (action[0] ** 2)
             return action
 
         root_dir = 'runs/' + root_dir + '/'

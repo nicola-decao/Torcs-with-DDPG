@@ -123,11 +123,6 @@ class TorcsEnv(Env):
                 a['steer'] **= 2
             else:
                 a['steer'] = - (a['steer'] ** 2)
-        # elif self.__last_speed > 100:
-        #     if a['steer'] > 0:
-        #         a['steer'] **= 1.5
-        #     else:
-        #         a['steer'] = - (a['steer'] ** 1.5)
 
         sensors = self.client.step(a)
 
