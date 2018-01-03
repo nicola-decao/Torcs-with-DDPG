@@ -1,8 +1,7 @@
 # Torcs-with-DDPG
 ### Implementation of Deep Deterministic Policy Gradient with Keras in TORCS racing car video-game
 
-We used Deep Deterministic Policy Gradient [1][2] to build an agent that plays
-TORCS: a racing car video-game.
+This work use deep reinforcement learning on continuous domains to build a self-driving racing car controller in TORCS car video game. State-of-the-art deep learning techniques such an actor-critic network for a Deep Deterministic Policy Gradient [1][2] were used. Moreover, the controller performance was boosted with curriculum learning and an averaging of multiple trained networks. On the top of the agent controller, heuristics and in-domain knowledge helped to increase its stability and performance while the hyper-parameters settings were successfully handled by genetic algorithms.
 
 The principal component of our car controller consists in a feed forward neural
 network which uses 29 inputs (track angle, track position, speeds along 3 axis,
